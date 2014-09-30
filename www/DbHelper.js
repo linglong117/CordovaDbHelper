@@ -31,6 +31,10 @@ DbHelper = function() {
 	this.DeleteArray = function(params, callback) {
 		cordova.exec(callback, null, "DbHelper", "deleteArray", [params]);
 	}
+	
+	this.ResetDb = function(params, callback) {
+		cordova.exec(callback, null, "DbHelper", "resetdb", [params]);
+	}
 };
 
 var instance = new DbHelper();
@@ -41,5 +45,6 @@ root.dbHelper = {
 	post : instance.Post,
 	postArray : instance.PostArray,
 	deleteArray : instance.DeleteArray,
-	query : instance.Query
+	query : instance.Query,
+	resetdb:instance.ResetDb
 };

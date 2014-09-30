@@ -203,6 +203,44 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }
 }
 
+- (Boolean) reCopyDatabase:(id)dbPath{
+    
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSError *error;
+    
+    //NSString *dbPath = [self getDBPath];
+    
+    BOOL success = [fileManager fileExistsAtPath:dbPath];
+    
+    if(!success) {
+        
+        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
+        
+        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        
+        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
+        
+        if (!success)
+            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+    }else{
+        //先删除，再重新拷贝
+        
+        //        [fileManager removeItemAtPath:dbPath error:&error];
+        //
+        //        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
+        //
+        //        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        //
+        //        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
+        //
+        //        if (!success)
+        //        {
+        //            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+        //        }
+    }
+    return true;
+}
+
 - (NSString *) getDBPath
 {
     
@@ -385,34 +423,34 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     sql = [@"UPDATE " stringByAppendingFormat:@" %@  SET ",tbName];
     /*
      // NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
-
-    if (columnsValues && [columnsValues count]) {
-        //得到词典中所有KEY值
-        NSEnumerator * enumeratorKey = [columnsValues keyEnumerator];
-        //快速枚举遍历所有KEY的值
-        for (NSObject *object in enumeratorKey) {
-            //NSLog(@"遍历KEY的值: %@",object);
-            
-            NSString *strcol = [NSString stringWithFormat:@"%@",object];
-            sql = [sql stringByAppendingFormat:@"%@ =?,",strcol];
-            [_whereArgs addObject:[columnsValues objectForKey:@"strcol"]];
-        }
-        
-        //得到词典中所有Value值
-        NSEnumerator * enumeratorValue = [columnsValues objectEnumerator];
-        
-        //快速枚举遍历所有Value的值
-        for (NSObject *object in enumeratorValue) {
-            NSLog(@"遍历Value的值: %@",object);
-            [_whereArgs addObject:[NSString stringWithFormat:@"%@",object]];
-        }
-        //通过KEY找到value
-        NSObject *object = [columnsValues objectForKey:@"name"];
-        
-        if (object != nil) {
-            NSLog(@"通过KEY找到的value是: %@",object);
-        }
-    }*/
+     
+     if (columnsValues && [columnsValues count]) {
+     //得到词典中所有KEY值
+     NSEnumerator * enumeratorKey = [columnsValues keyEnumerator];
+     //快速枚举遍历所有KEY的值
+     for (NSObject *object in enumeratorKey) {
+     //NSLog(@"遍历KEY的值: %@",object);
+     
+     NSString *strcol = [NSString stringWithFormat:@"%@",object];
+     sql = [sql stringByAppendingFormat:@"%@ =?,",strcol];
+     [_whereArgs addObject:[columnsValues objectForKey:@"strcol"]];
+     }
+     
+     //得到词典中所有Value值
+     NSEnumerator * enumeratorValue = [columnsValues objectEnumerator];
+     
+     //快速枚举遍历所有Value的值
+     for (NSObject *object in enumeratorValue) {
+     NSLog(@"遍历Value的值: %@",object);
+     [_whereArgs addObject:[NSString stringWithFormat:@"%@",object]];
+     }
+     //通过KEY找到value
+     NSObject *object = [columnsValues objectForKey:@"name"];
+     
+     if (object != nil) {
+     NSLog(@"通过KEY找到的value是: %@",object);
+     }
+     }*/
     
     if (columnsValues && [columnsValues count]>0) {
         for (int i=0;i<[columnsValues count];i++) {
@@ -578,6 +616,28 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     return sql;
 }
 
+- (void)resetdb:(CDVInvokedUrlCommand*)command
+{
+    NSLog(@"resetdb");
+    
+    CDVPluginResult* pluginResult = nil;
+    
+    NSMutableArray *options = [command.arguments objectAtIndex:0];
+    
+    
+    NSString *dbname = [options objectAtIndex:0];
+    NSString *dbPath = [self databaseFullPath:dbname];
+    databasePath = [NSString stringWithFormat:@"%@",dbPath];
+    [self reCopyDatabase:dbPath];
+    
+    
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:true];
+    
+    
+}
+
+
+
 #pragma custom code
 //====================================================================
 
@@ -725,7 +785,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 {
     NSLog(@"delete");
     [self openCustom:[[command.arguments objectAtIndex:0] objectAtIndex:0]];
-
+    
     //[self open:command];
     [self backgroundExecuteSqlBatch:command];
 }
@@ -918,27 +978,27 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 }
 
 /*
--(void) delete: (CDVInvokedUrlCommand*)command
-{
+ -(void) delete: (CDVInvokedUrlCommand*)command
+ {
  
-    CDVPluginResult* pluginResult = nil;
-    NSMutableDictionary *options = [command.arguments objectAtIndex:0];
-    
-    NSString *dbPath = [self getDBPath:[options objectForKey:@"path"]];
-    if(dbPath==NULL) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
-    } else {
-        if([[NSFileManager defaultManager]fileExistsAtPath:dbPath]) {
-            [[NSFileManager defaultManager]removeItemAtPath:dbPath error:nil];
-            [openDBs removeObjectForKey:dbPath];
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"DB deleted"];
-        } else {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"The database does not exist on that path"];
-        }
-    }
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+ CDVPluginResult* pluginResult = nil;
+ NSMutableDictionary *options = [command.arguments objectAtIndex:0];
  
-}
+ NSString *dbPath = [self getDBPath:[options objectForKey:@"path"]];
+ if(dbPath==NULL) {
+ pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
+ } else {
+ if([[NSFileManager defaultManager]fileExistsAtPath:dbPath]) {
+ [[NSFileManager defaultManager]removeItemAtPath:dbPath error:nil];
+ [openDBs removeObjectForKey:dbPath];
+ pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"DB deleted"];
+ } else {
+ pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"The database does not exist on that path"];
+ }
+ }
+ [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+ 
+ }
  */
 
 -(void) backgroundExecuteSqlBatch: (CDVInvokedUrlCommand*)command
@@ -967,7 +1027,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     NSString *where = [NSString string];
     //NSMutableArray *whereArgs = [NSMutableArray array];
     //NSMutableArray *_whereArgs = [NSMutableArray array];
-
+    
     NSString *groupBy = [NSString string];
     NSString *having = [NSString string];
     NSString *orderBy = [NSString string];;
@@ -975,7 +1035,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     
     NSMutableArray *querys = [NSMutableArray array];
     NSMutableArray *_querys = [NSMutableArray array];
-
+    
     
     if ([strAction isEqualToString:@"get"]) {
         //NSMutableArray *getArray = [[NSMutableArray alloc] init];
@@ -1018,7 +1078,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         columnsValues = [options objectAtIndex:2];
         where = [options objectAtIndex:3];
         querys = [options objectAtIndex:4];
-     
+        
         if (columnsValues && [columnsValues count]) {
             //得到词典中所有KEY值
             NSEnumerator * enumeratorKey = [columnsValues keyEnumerator];
@@ -1031,7 +1091,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
                 [_querys addObject:strValue];
             }
         }
-
+        
         if ((querys && [querys count])) {
             for (int i=0; i<[querys count]; i++) {
                 [_querys addObject:[querys objectAtIndex:i]];
@@ -1054,7 +1114,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
             NSMutableArray *_columns = [NSMutableArray array];
             NSMutableArray *_querys_ = [NSMutableArray array];
-
+            
             
             NSMutableArray *_options = [[NSMutableArray alloc] init];
             dbName = [arr objectAtIndex:0];
@@ -1101,7 +1161,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         for (int i=0; i<[options count]; i++) {
             
             NSMutableArray *_options = [[NSMutableArray alloc] init];
-
+            
             NSMutableArray *arr = [options objectAtIndex:i];
             NSMutableArray *_querys_ = [NSMutableArray array];
             dbName = [arr objectAtIndex:0];
@@ -1495,7 +1555,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
                 keepGoing = NO;
             }
                 break;
-            default:
+                default:
                 error = [DbHelper captureSQLiteErrorFromDb:db];
                 keepGoing = NO;
         }
@@ -1619,7 +1679,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
                 keepGoing = NO;
                 break;
                 
-            default:
+                default:
                 error = [DbHelper captureSQLiteErrorFromDb:db];
                 keepGoing = NO;
         }
@@ -1720,7 +1780,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             return QUOTA_ERR;
         case SQLITE_CONSTRAINT:
             return CONSTRAINT_ERR;
-        default:
+            default:
             return UNKNOWN_ERR;
     }
 }

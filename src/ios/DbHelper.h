@@ -86,6 +86,7 @@ typedef int WebSQLError;
 - (void)get:(CDVInvokedUrlCommand*)command;
 - (void)post:(CDVInvokedUrlCommand*)command;
 - (void)delete:(CDVInvokedUrlCommand*)command;
+- (void)resetdb:(CDVInvokedUrlCommand*)command;
 
 
 
