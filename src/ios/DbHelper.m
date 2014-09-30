@@ -225,18 +225,15 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }else{
         //先删除，再重新拷贝
         
-        //        [fileManager removeItemAtPath:dbPath error:&error];
-        //
-        //        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        //
-        //        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
-        //
-        //        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
-        //
-        //        if (!success)
-        //        {
-        //            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
-        //        }
+        //先删除，再重新拷贝
+        [fileManager removeItemAtPath:dbPath error:&error];
+        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
+        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
+        if (!success)
+        {
+            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+        }
     }
     return true;
 }
