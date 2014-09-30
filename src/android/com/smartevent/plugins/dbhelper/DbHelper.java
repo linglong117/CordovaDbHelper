@@ -131,9 +131,9 @@ public class DbHelper extends CordovaPlugin {
 		case resetdb:
 		{
               pluginResult = null;
-              db.reOpenDatabese(args);
+             boolean result =  db.reOpenDatabese(args);
 			 	
-              pluginResult=  new PluginResult(PluginResult.Status.OK, true);
+              pluginResult=  new PluginResult(PluginResult.Status.OK, result);
 			 //cbc.success(args);
               cbc.sendPluginResult(pluginResult);
 		}

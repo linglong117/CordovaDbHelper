@@ -10,6 +10,7 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import android.R.bool;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ContentValues;
@@ -597,7 +598,8 @@ public class PGSQLitePlugin {
 	}
 	
 	@SuppressWarnings("deprecation")
-	public void reOpenDatabese(JSONArray data) {
+	public boolean reOpenDatabese(JSONArray data) {
+		boolean result = false;
 		try {
 			String storage = PGSQLitePlugin.USE_INTERNAL;
 			String dbName = data.getString(0);
@@ -610,7 +612,7 @@ public class PGSQLitePlugin {
 							Environment.MEDIA_MOUNTED)) {
 				// new PluginResult(PluginResult.Status.ERROR,
 				// "SDCard not mounted")
-				return;
+				return false;
 			}
 			String _dbName = null;
 			SQLiteDatabase db = getDb(dbName);
@@ -665,9 +667,34 @@ public class PGSQLitePlugin {
 						dbOut.close();
 						assetsDB.close();
 						status = 2;
+						result = true;
 					} catch (Exception e) {
 						Log.e("PGSQLitePlugin",
 								"error get db from assets=" + e.getMessage());
+						return false;
+					}
+				}else {
+					
+					deleteFile(dbFile);//TODO
+					status = 1;
+					try {
+						InputStream assetsDB = this.ctx.getAssets().open(
+								"www/" + dbName);
+						OutputStream dbOut = new FileOutputStream(_dbName);
+						byte[] buffer = new byte[1024];
+						int length;
+						while ((length = assetsDB.read(buffer)) > 0) {
+							dbOut.write(buffer, 0, length);
+						}
+						dbOut.flush();
+						dbOut.close();
+						assetsDB.close();
+						status = 2;
+						result = true;
+					} catch (Exception e) {
+						Log.e("PGSQLitePlugin",
+								"error get db from assets=" + e.getMessage());
+						result = false;
 					}
 				}
 				db = SQLiteDatabase.openDatabase(_dbName, null,
@@ -683,9 +710,31 @@ public class PGSQLitePlugin {
 			// openDbs.put(dbName, mydb);
 		} catch (Exception e) {
 			System.err.println(e);
+			return false;
 		}
+		return result;
 	}
 
+	
+	public static void deleteFile(File file) {
+		String sdState = Environment.getExternalStorageState();
+		if (sdState.equals(Environment.MEDIA_MOUNTED)) {
+			if (file.exists()) {
+				if (file.isFile()) {
+					file.delete();
+				}else if (file.isDirectory()) {// 如果它是一个目录
+					// 声明目录下所有的文件 files[];
+					File files[] = file.listFiles();
+					for (int i = 0; i < files.length; i++) { // 遍历目录下所有的文件
+						deleteFile(files[i]); // 把每个文件 用这个方法进行迭代
+					}
+				}
+				file.delete();
+			}
+		}
+	} 
+	
+	
 	public PluginResult closeDatabese(JSONArray data) {
 		PluginResult result = null;
 		try {

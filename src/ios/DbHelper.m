@@ -211,31 +211,37 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     //NSString *dbPath = [self getDBPath];
     
     BOOL success = [fileManager fileExistsAtPath:dbPath];
+    Boolean flag=false;
     
     if(!success) {
-        
-        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
-        
-        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
-        
-        if (!success)
-            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
-    }else{
-        //先删除，再重新拷贝
-        
-        //先删除，再重新拷贝
-        [fileManager removeItemAtPath:dbPath error:&error];
         NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
         defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
         success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
         if (!success)
         {
+            flag=false;
             NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+        }else
+        {
+            flag=true;
+        }
+    }else{
+        //先删除，再重新拷贝
+        success= [fileManager removeItemAtPath:dbPath error:&error];
+        
+        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
+        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
+        if (!success)
+        {
+            flag=false;
+            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+        }else
+        {
+            flag=true;
         }
     }
-    return true;
+    return flag;
 }
 
 - (NSString *) getDBPath
@@ -616,21 +622,14 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 - (void)resetdb:(CDVInvokedUrlCommand*)command
 {
     NSLog(@"resetdb");
-    
     CDVPluginResult* pluginResult = nil;
-    
     NSMutableArray *options = [command.arguments objectAtIndex:0];
-    
-    
     NSString *dbname = [options objectAtIndex:0];
     NSString *dbPath = [self databaseFullPath:dbname];
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
-    [self reCopyDatabase:dbPath];
-    
-    
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:true];
-    
-    
+    Boolean result = [self reCopyDatabase:dbPath];
+    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
+    [self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
 }
 
 
