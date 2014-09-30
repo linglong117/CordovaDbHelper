@@ -68,6 +68,9 @@ public class DbHelper extends CordovaPlugin {
 		{
 			db = new PGSQLitePlugin(this.cordova.getActivity(), args.getJSONArray(0));
 			db.openDatabese(args.getJSONArray(0));
+		}else if(action ==Action.resetdb) {
+			db = new PGSQLitePlugin(this.cordova.getActivity(), args);
+//			db.reOpenDatabese(args);
 		}else {
 			db = new PGSQLitePlugin(this.cordova.getActivity(), args);
 			db.openDatabese(args);
@@ -121,6 +124,16 @@ public class DbHelper extends CordovaPlugin {
 			 {
 			 	pluginResult=db.deleteQuery(args.getJSONArray(i));
 			 }
+			 //cbc.success(args);
+              cbc.sendPluginResult(pluginResult);
+		}
+			break;
+		case resetdb:
+		{
+              pluginResult = null;
+              db.reOpenDatabese(args);
+			 	
+              pluginResult=  new PluginResult(PluginResult.Status.OK, true);
 			 //cbc.success(args);
               cbc.sendPluginResult(pluginResult);
 		}

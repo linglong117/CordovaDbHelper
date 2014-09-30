@@ -595,6 +595,96 @@ public class PGSQLitePlugin {
 			System.err.println(e);
 		}
 	}
+	
+	@SuppressWarnings("deprecation")
+	public void reOpenDatabese(JSONArray data) {
+		try {
+			String storage = PGSQLitePlugin.USE_INTERNAL;
+			String dbName = data.getString(0);
+			JSONObject options = getJSONObjectAt(data, 1);
+			if (options != null) {
+				storage = options.getString("storage");
+			}
+			if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)
+					&& !Environment.getExternalStorageState().equals(
+							Environment.MEDIA_MOUNTED)) {
+				// new PluginResult(PluginResult.Status.ERROR,
+				// "SDCard not mounted")
+				return;
+			}
+			String _dbName = null;
+			SQLiteDatabase db = getDb(dbName);
+			File dbFile = null;
+			if (Environment.getExternalStorageState().equals(
+					Environment.MEDIA_MOUNTED)
+					&& !storage.equals(PGSQLitePlugin.USE_INTERNAL)) {
+				if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)) {
+					dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+					if (!dbFile.exists()) {
+						dbFile.mkdirs();
+					}
+				} else {
+					dbFile = ctx.getDatabasePath(dbName);
+					if (!dbFile.exists()) {
+						dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+
+						if (!dbFile.exists()) {
+							StatFs stat = new StatFs("/data/");
+							long blockSize = stat.getBlockSize();
+							long availableBlocks = stat.getBlockCount();
+							long size = blockSize * availableBlocks;
+							if (size >= 1024 * 1024 * 1024) {
+								dbFile = ctx.getDatabasePath(dbName);
+							} else {
+								dbFile = new File(
+										ctx.getExternalFilesDir(null), dbName);
+							}
+							Log.i("blockSize * availableBlocks",
+									Long.toString(size));
+						}
+					}
+				}
+			} else {
+				dbFile = ctx.getDatabasePath(dbName);
+			}
+			_dbName = dbFile.getPath();
+			int status = 0;
+			if (db == null) {
+				if (!dbFile.exists()) {
+					status = 1;
+					try {
+						InputStream assetsDB = this.ctx.getAssets().open(
+								"www/" + dbName);
+						OutputStream dbOut = new FileOutputStream(_dbName);
+						byte[] buffer = new byte[1024];
+						int length;
+						while ((length = assetsDB.read(buffer)) > 0) {
+							dbOut.write(buffer, 0, length);
+						}
+						dbOut.flush();
+						dbOut.close();
+						assetsDB.close();
+						status = 2;
+					} catch (Exception e) {
+						Log.e("PGSQLitePlugin",
+								"error get db from assets=" + e.getMessage());
+					}
+				}
+				db = SQLiteDatabase.openDatabase(_dbName, null,
+						SQLiteDatabase.CREATE_IF_NECESSARY);
+				openDbs.put(dbName, db);
+			}
+
+			// copyFile(dbName, path + ctx.getPackageName() + "/databases/"
+			// + dbName);
+			// File dbfile = ctx.getDatabasePath(dbName);
+			// SQLiteDatabase mydb = SQLiteDatabase.openOrCreateDatabase(dbfile,
+			// null);
+			// openDbs.put(dbName, mydb);
+		} catch (Exception e) {
+			System.err.println(e);
+		}
+	}
 
 	public PluginResult closeDatabese(JSONArray data) {
 		PluginResult result = null;
