@@ -37,12 +37,11 @@ typedef int WebSQLError;
 
 @property (nonatomic, copy) NSMutableDictionary *openDBs;
 @property (nonatomic, retain) NSString *appDocsPath;
+@property (nonatomic, strong) NSString *seDbPath;
 
 
 
-- (NSString *)databaseFullPath;
-- (NSArray *)getMainMenuData;
-- (NSArray *)productDataBySNo:(NSInteger)sno;
+//- (NSString *)databaseFullPath;
 - (BOOL)prepareDatabase;
 
 +(NSMutableDictionary *) objectFromJSONString:(NSString *)jsonString;
@@ -63,7 +62,6 @@ typedef int WebSQLError;
 
 // Perform the SQL request
 -(CDVPluginResult*) executeSqlWithDict: (NSMutableDictionary*)dict andArgs: (NSMutableDictionary*)dbargs;
-
 -(CDVPluginResult*) executeSqlWithDictSE: (NSMutableArray*)options action:(NSString*)action;
 
 
@@ -79,9 +77,7 @@ typedef int WebSQLError;
 // LIBB64---END
 
 #pragma custom code
-- (void)doParserjson:(CDVInvokedUrlCommand*)command;
-
-- (void)query:(CDVInvokedUrlCommand*)command;
+//- (void)query:(CDVInvokedUrlCommand*)command;
 - (void)put:(CDVInvokedUrlCommand*)command;
 - (void)get:(CDVInvokedUrlCommand*)command;
 - (void)post:(CDVInvokedUrlCommand*)command;

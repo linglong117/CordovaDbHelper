@@ -64,30 +64,36 @@ public class DbHelper extends CordovaPlugin {
 			CallbackContext cbc) throws JSONException {
 		boolean status = true;
 		
+		JSONArray seArray = new JSONArray();
+		
 		if(action ==Action.postArray || action == Action.deleteArray)
 		{
 			db = new PGSQLitePlugin(this.cordova.getActivity(), args.getJSONArray(0));
 			db.openDatabese(args.getJSONArray(0));
+			
+			seArray.put(args.getJSONArray(0).getString(0));
+			
 		}else if(action ==Action.resetdb) {
 			db = new PGSQLitePlugin(this.cordova.getActivity(), args);
 //			db.reOpenDatabese(args);
+			seArray.put(args.getString(0));
 		}else {
 			db = new PGSQLitePlugin(this.cordova.getActivity(), args);
 			db.openDatabese(args);
+			seArray.put(args.getString(0));
 		}
-		
 		PluginResult pluginResult = null;
 		switch (action) {
 		case put:
 		{
 			pluginResult = db.insertQuery(args);
-			cbc.sendPluginResult(pluginResult);
+			//cbc.sendPluginResult(pluginResult);
 		}
 			break;
 		case get:
 		{
 			pluginResult = db.query(args);
-			cbc.sendPluginResult(pluginResult);
+			//cbc.sendPluginResult(pluginResult);
 		}
 			break;
 		case post:
@@ -95,7 +101,7 @@ public class DbHelper extends CordovaPlugin {
  			pluginResult =  db.updateQuery(args);
  			// String str = args.toString();
  			//cbc.success(args);
-             cbc.sendPluginResult(pluginResult);
+             //cbc.sendPluginResult(pluginResult);
 		}
 			break;
         case postArray:
@@ -107,14 +113,14 @@ public class DbHelper extends CordovaPlugin {
               }
                  //String str = args.toString();
              //cbc.success(args);
-                 cbc.sendPluginResult(pluginResult);
+                 //cbc.sendPluginResult(pluginResult);
         }
                 break;
 		case delete:
 		{
 			 pluginResult = db.deleteQuery(args);
 			 //cbc.success(args);
-             cbc.sendPluginResult(pluginResult);
+             //cbc.sendPluginResult(pluginResult);
 		}
 			break;
 		case deleteArray:
@@ -125,22 +131,24 @@ public class DbHelper extends CordovaPlugin {
 			 	pluginResult=db.deleteQuery(args.getJSONArray(i));
 			 }
 			 //cbc.success(args);
-              cbc.sendPluginResult(pluginResult);
+              //cbc.sendPluginResult(pluginResult);
 		}
 			break;
 		case resetdb:
 		{
               pluginResult = null;
-             boolean result =  db.reOpenDatabese(args);
-			 	
+              boolean result =  db.reOpenDatabese(args);
               pluginResult=  new PluginResult(PluginResult.Status.OK, result);
 			 //cbc.success(args);
-              cbc.sendPluginResult(pluginResult);
+              //cbc.sendPluginResult(pluginResult);
 		}
 			break;
 		default:
 			break;
 		}
+		
+		db.closeDatabeseSE(seArray);
+        cbc.sendPluginResult(pluginResult);
 		return status;
 	}
 

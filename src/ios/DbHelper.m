@@ -160,6 +160,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 
 @synthesize openDBs;
 @synthesize appDocsPath;
+@synthesize seDbPath;
 
 -(CDVPlugin*) initWithWebView:(UIWebView*)theWebView
 {
@@ -244,41 +245,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     return flag;
 }
 
-- (NSString *) getDBPath
-{
-    
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory , NSUserDomainMask, YES);
-    NSString *documentsDir = [paths objectAtIndex:0];
-    return [documentsDir stringByAppendingPathComponent:@"DummyDB"];
-}
-
 /*
- - (void)query:(CDVInvokedUrlCommand*)command
- {
- NSLog(@"here");
- 
- CDVPluginResult *pluginResult = nil;
- NSString *echo = [command.arguments objectAtIndex:0];
- 
- echo = @"调用原生方法返回数据成功";
- 
- NSMutableArray *array = [[NSMutableArray alloc] init];
- [array addObject:echo];
- [array addObject:@"001"];
- [array addObject:@"007"];
- 
- if (echo != nil && [echo length] > 0) {
- //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:echo];
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:array];
- 
- } else {
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
- }
- [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
- }*/
-
-
-/*
+ //test
  - (CDVPluginResult*)get:(CDVInvokedUrlCommand*)command
  {
  CDVPluginResult *pluginResult = nil;
@@ -325,6 +293,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 {
     [self open:command];
     [self backgroundExecuteSqlBatch:command];
+    
 }
 
 - (NSString*)insertSE:(NSMutableArray*)options
@@ -629,6 +598,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
     Boolean result = [self reCopyDatabase:dbPath];
     pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
+    
+    [self closeSE:seDbPath];
     [self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
 }
 
@@ -726,31 +697,6 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     return _databaseFullPath;
 }
 
-- (BOOL)prepareDatabase{
-    //
-    //if (kOnlyRunLocally == 1) {
-    //databaseName = @"jepoque_new.sql";
-    //}
-    //
-    BOOL success;
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSError *error;
-    NSString *_databaseFullPath = [self databaseFullPath];
-    databasePath = [[NSString alloc] initWithString:_databaseFullPath];
-    success = [fileManager fileExistsAtPath:_databaseFullPath];
-    if (success)
-        return success;
-    // The writable database does not exist, so copy the default to the appropriate location.
-    NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@""];
-    success = [fileManager copyItemAtPath:defaultDBPath toPath:_databaseFullPath error:&error];
-    if (!success) {
-        NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
-        //return FALSE;
-    }
-    return success;
-}
-
-
 #pragma custom code
 
 - (void)get:(CDVInvokedUrlCommand*)command
@@ -817,6 +763,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     NSString *dbPath = [self databaseFullPath:dbname];
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
     [self copyDatabase:dbPath];
+    
+    seDbPath = [NSString stringWithFormat:@"%@",dbPath];
     /*
      int n = sqlite3_open([databasePath UTF8String], &database);
      if (n!=SQLITE_OK) {
@@ -880,9 +828,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 -(void)openCustom: (NSMutableArray*)options
 {
     CDVPluginResult* pluginResult = nil;
-    
     //NSMutableArray *options = [command objectAtIndex:0];
-    
     //NSString *dbname = [self getDBPath:[options objectForKey:@"name"]];
     //========custom code===========================
     //NSString *dbname = [options objectForKey:@"dbName"];
@@ -890,6 +836,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     NSString *dbPath = [self databaseFullPath:dbname];
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
     [self copyDatabase:dbPath];
+    seDbPath = [NSString stringWithFormat:@"%@",dbPath];
+
     /*
      int n = sqlite3_open([databasePath UTF8String], &database);
      if (n!=SQLITE_OK) {
@@ -973,6 +921,31 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     [self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
 }
 
+-(void) closeSE: (NSString*)path
+{
+    NSString *dbPath = path;
+    if (dbPath == NULL) {
+        //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
+        NSLog(@"You must specify database path");
+    }
+    else {
+        NSValue *val = [openDBs objectForKey:dbPath];
+        sqlite3 *db = [val pointerValue];
+        if (db == NULL) {
+            //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Specified db was not open"];
+            NSLog(@"Specified db was not open");
+        }
+        else {
+            sqlite3_close (db);
+            [openDBs removeObjectForKey:dbPath];
+            //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"DB closed"];
+            NSLog(@"DB closed");
+        }
+    }
+    //[self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
+}
+
+
 /*
  -(void) delete: (CDVInvokedUrlCommand*)command
  {
@@ -999,12 +972,15 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 
 -(void) backgroundExecuteSqlBatch: (CDVInvokedUrlCommand*)command
 {
-    [self.commandDelegate runInBackground:^{
-        //[self executeSqlBatch: command];
-        NSString *strAction = command.methodName;
-        [self executeSqlBatchSE:command];
-        NSLog(@"======backgroundExecuteSqlBatch=========");
-    }];
+    [self executeSqlBatchSE:command];
+    //2014-10-08 13:54:10
+
+//    [self.commandDelegate runInBackground:^{
+//        //[self executeSqlBatch: command];
+//        //NSString *strAction = command.methodName;
+//        [self executeSqlBatchSE:command];
+//        NSLog(@"======backgroundExecuteSqlBatch=========");
+//    }];
 }
 
 
@@ -1066,7 +1042,6 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         }
     }else if ([strAction isEqualToString:@"post"])
     {
-        
         NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
         NSMutableArray *_options = [[NSMutableArray alloc] init];
         dbName = [options objectAtIndex:0];
@@ -1172,7 +1147,6 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             
             [array addObject:_options];
         }
-        
     }
     return array;
 }
@@ -1294,6 +1268,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
         }
     }
+    [self closeSE:seDbPath];
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
@@ -1807,7 +1782,5 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     
     return result;
 }
-
-
 
 @end

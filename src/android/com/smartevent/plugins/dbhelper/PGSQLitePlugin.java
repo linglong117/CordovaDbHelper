@@ -25,6 +25,7 @@ public class PGSQLitePlugin {
 
 	private Hashtable<String, SQLiteDatabase> openDbs = new Hashtable<String, SQLiteDatabase>();
 	private Context ctx;
+	private String seDbName="";
 
 	public PGSQLitePlugin(Activity activity, JSONArray obj) {
 		// TODO Auto-generated constructor stub
@@ -512,6 +513,7 @@ public class PGSQLitePlugin {
 		try {
 			String storage = PGSQLitePlugin.USE_INTERNAL;
 			String dbName = data.getString(0);
+			seDbName = dbName;
 			JSONObject options = getJSONObjectAt(data, 1);
 			if (options != null) {
 				storage = options.getString("storage");
@@ -603,6 +605,7 @@ public class PGSQLitePlugin {
 		try {
 			String storage = PGSQLitePlugin.USE_INTERNAL;
 			String dbName = data.getString(0);
+			seDbName = dbName;
 			JSONObject options = getJSONObjectAt(data, 1);
 			if (options != null) {
 				storage = options.getString("storage");
@@ -752,6 +755,27 @@ public class PGSQLitePlugin {
 		}
 
 		return result;
+	}
+	
+	public void closeDatabeseSE(JSONArray data) {
+		//PluginResult result = null;
+		try {
+			Log.e("PGSQLitePlugin", "close action");
+			String dbName = data.getString(0);
+			SQLiteDatabase db = getDb(dbName);
+			if (db != null) {
+				db.close();
+				openDbs.remove(dbName);
+			}
+			//result = new PluginResult(PluginResult.Status.OK);
+			Log.v("closeDatabeseSE >> ", "OK");
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			//result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+			Log.v("closeDatabeseSE >> ", "ERROR");
+		}
+
+		//return result;
 	}
 
 	/**
