@@ -161,6 +161,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 @synthesize openDBs;
 @synthesize appDocsPath;
 @synthesize seDbPath;
+@synthesize _dbName;
 
 -(CDVPlugin*) initWithWebView:(UIWebView*)theWebView
 {
@@ -186,19 +187,13 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSError *error;
-    
     //NSString *dbPath = [self getDBPath];
-    
     BOOL success = [fileManager fileExistsAtPath:dbPath];
-    
     if(!success) {
-        
         NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
-        
+        //defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
         success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
-        
         if (!success)
             NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
     }
@@ -208,15 +203,13 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSError *error;
-    
     //NSString *dbPath = [self getDBPath];
-    
     BOOL success = [fileManager fileExistsAtPath:dbPath];
     Boolean flag=false;
-    
     if(!success) {
         NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        //defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
         success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
         if (!success)
         {
@@ -231,7 +224,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         success= [fileManager removeItemAtPath:dbPath error:&error];
         
         NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        //defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
+        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
         success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
         if (!success)
         {
@@ -759,8 +753,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     //NSString *dbname = [self getDBPath:[options objectForKey:@"name"]];
     //========custom code===========================
     //NSString *dbname = [options objectForKey:@"dbName"];
-    NSString *dbname = [options objectAtIndex:0];
-    NSString *dbPath = [self databaseFullPath:dbname];
+    _dbName = [options objectAtIndex:0];
+    NSString *dbPath = [self databaseFullPath:_dbName];
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
     [self copyDatabase:dbPath];
     
@@ -832,8 +826,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     //NSString *dbname = [self getDBPath:[options objectForKey:@"name"]];
     //========custom code===========================
     //NSString *dbname = [options objectForKey:@"dbName"];
-    NSString *dbname = [options objectAtIndex:0];
-    NSString *dbPath = [self databaseFullPath:dbname];
+    _dbName = [options objectAtIndex:0];
+    NSString *dbPath = [self databaseFullPath:_dbName];
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
     [self copyDatabase:dbPath];
     seDbPath = [NSString stringWithFormat:@"%@",dbPath];

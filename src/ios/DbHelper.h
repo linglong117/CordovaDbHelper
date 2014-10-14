@@ -39,6 +39,8 @@ typedef int WebSQLError;
 @property (nonatomic, retain) NSString *appDocsPath;
 @property (nonatomic, strong) NSString *seDbPath;
 
+@property (nonatomic, strong) NSString *_dbName;
+
 
 
 //- (NSString *)databaseFullPath;
