@@ -52,7 +52,7 @@
 #import "DbHelper.h"
 #include <regex.h>
 #import "NSString+Extended.h"
-#import "SqlArg.h"
+//#import "SqlArg.h"
 
 
 //LIBB64
@@ -1030,22 +1030,22 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
  
  */
 
--(SqlArg*)ConvertToSqlArg:(NSMutableArray *) options
-{
-    
-    SqlArg *sArg = [[SqlArg alloc] init];
-    
-    //    NSString *dbName = [NSString string];
-    //    NSString *tbName = [NSString string];
-    //NSMutableArray *columns = [NSMutableArray array];
-    
-    sArg.dbname = [options objectAtIndex:0];
-    sArg.tbl =[options objectAtIndex:1];
-    sArg.columns = [options objectAtIndex:2];
-    sArg.values = [options objectAtIndex:3];
-    
-    return sArg;
-}
+//-(SqlArg*)ConvertToSqlArg:(NSMutableArray *) options
+//{
+//    
+//    SqlArg *sArg = [[SqlArg alloc] init];
+//    
+//    //    NSString *dbName = [NSString string];
+//    //    NSString *tbName = [NSString string];
+//    //NSMutableArray *columns = [NSMutableArray array];
+//    
+//    sArg.dbname = [options objectAtIndex:0];
+//    sArg.tbl =[options objectAtIndex:1];
+//    sArg.columns = [options objectAtIndex:2];
+//    sArg.values = [options objectAtIndex:3];
+//    
+//    return sArg;
+//}
 
 
 -(NSMutableArray*)getOptionsArray:(CDVInvokedUrlCommand*)command
