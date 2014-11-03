@@ -1,3 +1,46 @@
+////
+////  SqlArg.h
+////  Checkin
+////
+////  Created by smartconf on 14-11-4.
+////
+////
+//
+//#import <Foundation/Foundation.h>
+//
+//@interface SqlArg : NSObject
+//
+//@property (nonatomic, strong) NSString *dbname;
+//@property (nonatomic, strong) NSString *tbl;
+//@property (nonatomic, strong) NSString *columns;
+//@property (nonatomic, strong) NSMutableArray *values;
+//
+//@end
+//
+//
+////
+////  SqlArg.m
+////  Checkin
+////
+////  Created by smartconf on 14-11-4.
+////
+////
+//
+////#import "SqlArg.h"
+//
+//@implementation SqlArg
+//
+//@synthesize dbname;
+//@synthesize tbl;
+//@synthesize columns;
+//@synthesize values;
+//
+//@end
+
+
+
+
+
 /*
  * Copyright (C) 2011-2014 ealing
  * Copyright (C) 2014 ealing
@@ -9,6 +52,7 @@
 #import "DbHelper.h"
 #include <regex.h>
 #import "NSString+Extended.h"
+#import "SqlArg.h"
 
 
 //LIBB64
@@ -156,6 +200,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 }
 
 
+
+
 @implementation DbHelper
 
 @synthesize openDBs;
@@ -176,6 +222,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         NSLog(@"Detected docs path: %@", docs);
         [self setAppDocsPath:docs];
     }
+    
     return self;
 }
 
@@ -831,7 +878,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
     [self copyDatabase:dbPath];
     seDbPath = [NSString stringWithFormat:@"%@",dbPath];
-
+    
     /*
      int n = sqlite3_open([databasePath UTF8String], &database);
      if (n!=SQLITE_OK) {
@@ -968,20 +1015,49 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 {
     [self executeSqlBatchSE:command];
     //2014-10-08 13:54:10
+    //
+    //        [self.commandDelegate runInBackground:^{
+    //            //[self executeSqlBatch: command];
+    //            //NSString *strAction = command.methodName;
+    //            [self executeSqlBatchSE:command];
+    //            //NSLog(@"======backgroundExecuteSqlBatch========= %@",[command.arguments objectAtIndex:0]);
+    //        }];
+}
 
-//    [self.commandDelegate runInBackground:^{
-//        //[self executeSqlBatch: command];
-//        //NSString *strAction = command.methodName;
-//        [self executeSqlBatchSE:command];
-//        NSLog(@"======backgroundExecuteSqlBatch=========");
-//    }];
+
+
+/*
+ 
+ */
+
+-(SqlArg*)ConvertToSqlArg:(NSMutableArray *) options
+{
+    
+    SqlArg *sArg = [[SqlArg alloc] init];
+    
+    //    NSString *dbName = [NSString string];
+    //    NSString *tbName = [NSString string];
+    //NSMutableArray *columns = [NSMutableArray array];
+    
+    sArg.dbname = [options objectAtIndex:0];
+    sArg.tbl =[options objectAtIndex:1];
+    sArg.columns = [options objectAtIndex:2];
+    sArg.values = [options objectAtIndex:3];
+    
+    return sArg;
 }
 
 
 -(NSMutableArray*)getOptionsArray:(CDVInvokedUrlCommand*)command
 {
+    // NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     
-    NSMutableArray *array = [[NSMutableArray alloc] init];
+    
+    // @synchronized(self) {
+    
+    //NSRunLoop   *runloop = [NSRunLoop currentRunLoop];
+    
+    NSMutableArray *array = [NSMutableArray array];
     
     NSMutableArray *options = [command.arguments objectAtIndex:0];
     NSString *strAction = command.methodName;
@@ -1019,6 +1095,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         [array addObject:options];
     }else if ([strAction isEqualToString:@"put"])
     {
+        //SqlArg *arg =  [self ConvertToSqlArg:options];
+        
         dbName = [options objectAtIndex:0];
         tbName = [options objectAtIndex:1];
         columns = [options objectAtIndex:2];
@@ -1026,7 +1104,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         
         if (querys && [querys count]>0) {
             for (int i=0; i<[querys count]; i++) {
-                NSMutableArray *putArray = [[NSMutableArray alloc] init];
+                NSMutableArray *putArray = [NSMutableArray array];
                 [putArray addObject:dbName];
                 [putArray addObject:tbName];
                 [putArray addObject:columns];
@@ -1037,7 +1115,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }else if ([strAction isEqualToString:@"post"])
     {
         NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
-        NSMutableArray *_options = [[NSMutableArray alloc] init];
+        NSMutableArray *_options = [NSMutableArray array];
         dbName = [options objectAtIndex:0];
         tbName = [options objectAtIndex:1];
         columnsValues = [options objectAtIndex:2];
@@ -1081,7 +1159,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             NSMutableArray *_querys_ = [NSMutableArray array];
             
             
-            NSMutableArray *_options = [[NSMutableArray alloc] init];
+            NSMutableArray *_options = [NSMutableArray array];
             dbName = [arr objectAtIndex:0];
             tbName = [arr objectAtIndex:1];
             columnsValues = [arr objectAtIndex:2];
@@ -1125,7 +1203,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     {
         for (int i=0; i<[options count]; i++) {
             
-            NSMutableArray *_options = [[NSMutableArray alloc] init];
+            NSMutableArray *_options = [NSMutableArray array];
             
             NSMutableArray *arr = [options objectAtIndex:i];
             NSMutableArray *_querys_ = [NSMutableArray array];
@@ -1141,12 +1219,16 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             
             [array addObject:_options];
         }
+        
     }
     return array;
+    //}
+    //[pool drain];
 }
 
 - (NSData *)toJSONData:(id)theData{
     
+    //NSLog(@"toJSONData  theData >>  %@ ",theData);
     NSError *error = nil;
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:theData
                                                        options:NSJSONWritingPrettyPrinted
@@ -1158,14 +1240,15 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }
 }
 
--(NSMutableDictionary*)getSelectData:(NSMutableArray*)sourceData
+-(NSMutableDictionary*)getSelectData:(NSMutableDictionary*)sourceData
 {
-    NSMutableDictionary *resultDic = [[NSMutableDictionary alloc] init];
+    NSMutableDictionary *resultDic = [NSMutableDictionary dictionary];
     
     //NSString *resutValue = [NSString stringWithFormat:@"%@",resultArray];
     NSString *resutValue = [NSString string];
     //NSDictionary *myDictionary = [NSDictionary dictionaryWithObject:@&quot;Hello&quot; forKey:@&quot;World&quot;];
     NSError *error;
+    //if (sourceData && [sourceData count]>0) {
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sourceData
                                                        options:0
                                                          error:&error];
@@ -1173,8 +1256,9 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         NSLog(@"JSON error: %@", error);
     } else {
         NSString *JSONString = [[NSString alloc] initWithBytes:[jsonData bytes] length:[jsonData length] encoding:NSUTF8StringEncoding];
-        NSLog(@"JSON OUTPUT: %@",JSONString);
+        //NSLog(@"JSON OUTPUT: %@",JSONString);
         resutValue = JSONString;
+        
     }
     NSData *jsonDataNew = [resutValue dataUsingEncoding:NSUTF8StringEncoding];
     //NSError *error = nil;
@@ -1185,81 +1269,149 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }
     else {
         //Do Something
-        NSLog(@"%@", resultDic);
+        //NSLog(@"%@", resultDic);
     }
+    //}
+    
     return resultDic;
 }
 
 -(void) executeSqlBatchSE: (CDVInvokedUrlCommand*)command
 {
     // NSMutableArray *options = [command.arguments objectAtIndex:0];
+    
     NSString *strAction = command.methodName;
-    NSMutableArray *options = [self getOptionsArray:command];
-    NSMutableArray *results = [NSMutableArray arrayWithCapacity:0];
+    
+    
+    NSMutableArray *options = [NSMutableArray array];
     CDVPluginResult* pluginResult;
-    @synchronized(self) {
-        for (int i=0;i<[options count];i++) {
-            //pluginResult = [self executeSqlWithDictSE:command];
-            pluginResult = [self executeSqlWithDictSE:[options objectAtIndex:i] action:strAction];
+    
+    NSLog(@"strAction %@",strAction);
+    
+    if ([strAction isEqualToString:@"put"]) {
+        
+        options = [command.arguments objectAtIndex:0];
+        if (options && [options count]>0) {
             
-            if ([pluginResult.status intValue] == CDVCommandStatus_ERROR) {
-                /* add error with result.message: */
-                NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
-                [r setObject:@"0" forKey:@"qid"];
-                [r setObject:@"error" forKey:@"type"];
-                [r setObject:pluginResult.message forKey:@"error"];
-                [r setObject:pluginResult.message forKey:@"result"];
-                [results addObject: r];
-            } else {
-                /* add result with result.message: */
-                NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
-                [r setObject:@"0" forKey:@"qid"];
-                [r setObject:@"success" forKey:@"type"];
-                [r setObject:pluginResult.message forKey:@"result"];
-                [results addObject: r];
-            }
-        }
-        //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:results];
-        if ([strAction isEqualToString:@"get"]) {
-            //Select
-            NSMutableArray *resultArray = pluginResult.message;
-            NSMutableDictionary  *resultDic = [self getSelectData:resultArray];
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
-            
-        }else  if ([strAction isEqualToString:@"put"]) {
-            //insert
-            NSMutableDictionary *resultDic = pluginResult.message;
-            NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-            if (code!=0) {
-                [resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-            }
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[resultDic objectForKey:@"insertId"] stringValue]];
-        }else if ([strAction isEqualToString:@"post"] ||[strAction isEqualToString:@"postArray"])
-        {
-            //update
-            NSMutableDictionary *resultDic = pluginResult.message;
-            NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-            if (code!=0) {
-                //[resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-            }
-            //result = new PluginResult(PluginResult.Status.OK, count);
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
-        }else if ([strAction isEqualToString:@"delete"]||[strAction isEqualToString:@"deleteArray"])
-        {
-            //delete
-            NSMutableDictionary *resultDic = pluginResult.message;
-            NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-            if (code!=0) {
-                //[resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-            }
-            //result = new PluginResult(PluginResult.Status.OK, count);
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
         }else
         {
-            //delete
-            NSMutableDictionary *resultDic = pluginResult.message;
-            //NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
+            return;
+        }
+        
+        NSString *dbName = [NSString string];
+        
+        NSString *tbName = [NSString string];
+        NSMutableArray *columns = [NSMutableArray array];
+        NSMutableArray *querys = [NSMutableArray array];
+        
+        dbName = [options objectAtIndex:0];
+        tbName = [options objectAtIndex:1];
+        columns = [options objectAtIndex:2];
+        querys = [options objectAtIndex:3];
+        
+        if (querys && [querys count]>0) {
+            for (int i=0; i<[querys count]; i++) {
+                NSMutableArray *putArray = [NSMutableArray array];
+                [putArray addObject:dbName];
+                [putArray addObject:tbName];
+                [putArray addObject:columns];
+                [putArray addObject:[querys objectAtIndex:i]];
+                
+                
+                @synchronized(self) {
+                    //pluginResult = [self executeSqlWithDictSE:command];
+                    pluginResult = [self executeSqlWithDictSE:putArray action:strAction];
+                    
+                    NSMutableDictionary *resultDic = pluginResult.message;
+                    NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
+                    if (code!=0) {
+                        [resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
+                    }
+                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[resultDic objectForKey:@"insertId"] stringValue]];
+                }
+            }
+        }
+        
+    }else
+    {
+        options = [self getOptionsArray:command];
+        
+        
+        NSMutableArray *results = [NSMutableArray arrayWithCapacity:0];
+        //CDVPluginResult* pluginResult;
+        @synchronized(self) {
+            for (int i=0;i<[options count];i++) {
+                //pluginResult = [self executeSqlWithDictSE:command];
+                pluginResult = [self executeSqlWithDictSE:[options objectAtIndex:i] action:strAction];
+                
+                if ([pluginResult.status intValue] == CDVCommandStatus_ERROR) {
+                    /* add error with result.message: */
+                    NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
+                    [r setObject:@"0" forKey:@"qid"];
+                    [r setObject:@"error" forKey:@"type"];
+                    [r setObject:pluginResult.message forKey:@"error"];
+                    [r setObject:pluginResult.message forKey:@"result"];
+                    [results addObject: r];
+                } else {
+                    /* add result with result.message: */
+                    NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
+                    [r setObject:@"0" forKey:@"qid"];
+                    [r setObject:@"success" forKey:@"type"];
+                    [r setObject:pluginResult.message forKey:@"result"];
+                    [results addObject: r];
+                }
+            }
+            //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:results];
+            if ([strAction isEqualToString:@"get"]) {
+                //Select
+                NSMutableDictionary  *resultDic  = [NSMutableDictionary dictionary];
+                if ([pluginResult.message isKindOfClass:[NSMutableDictionary class]]) {
+                    
+                    NSMutableDictionary *resultDict = pluginResult.message;
+                    if ([resultDict count]>0) {
+                        resultDic = [self getSelectData:resultDict];
+                    }
+                }else{
+                    NSLog(@"pluginResult.message >  %@",pluginResult.message);
+                }
+                
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
+                
+            }else  if ([strAction isEqualToString:@"put"]) {
+                //insert
+                NSMutableDictionary *resultDic = pluginResult.message;
+                NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
+                if (code!=0) {
+                    [resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
+                }
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[resultDic objectForKey:@"insertId"] stringValue]];
+            }else if ([strAction isEqualToString:@"post"] ||[strAction isEqualToString:@"postArray"])
+            {
+                //update
+                NSMutableDictionary *resultDic = pluginResult.message;
+                NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
+                if (code!=0) {
+                    //[resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
+                }
+                //result = new PluginResult(PluginResult.Status.OK, count);
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
+            }else if ([strAction isEqualToString:@"delete"]||[strAction isEqualToString:@"deleteArray"])
+            {
+                //delete
+                NSMutableDictionary *resultDic = pluginResult.message;
+                NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
+                if (code!=0) {
+                    //[resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
+                }
+                //result = new PluginResult(PluginResult.Status.OK, count);
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
+            }else
+            {
+                //delete
+                NSMutableDictionary *resultDic = pluginResult.message;
+                //NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
+            }
         }
     }
     [self closeSE:seDbPath];
@@ -1333,7 +1485,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     NSString *dbName = [NSString string];
     NSMutableArray *columns = [NSMutableArray array];
     NSString *where = [NSString string];
-    NSMutableArray *whereArgs = [NSMutableArray array];
+    //NSMutableArray *whereArgs = [NSMutableArray array];
     NSMutableArray *querys = [NSMutableArray array];
     
     NSString *groupBy = [NSString string];
@@ -1416,7 +1568,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }
     //sql = [NSString stringWithFormat:@"select UserId,UserName,Email from %@  ",tbName];
     query = sql;
-    NSLog(@"sql info %@ >>>",query);
+    // NSLog(@"sql info %@ >>>",query);
     
     if (dbPath == NULL) {
         return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
@@ -1429,14 +1581,14 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No such database, you must open it first"];
     }
     sqlite3 *db = [dbPointer pointerValue];
-    database = db;
-    int n = sqlite3_open([databasePath UTF8String], &database);
-    if (n!=SQLITE_OK) {
-        NSLog(@"数据库打开出错...");
-    }else
-    {
-        NSLog(@"数据库打开成功...");
-    }
+    //database = db;
+    //    int n = sqlite3_open([databasePath UTF8String], &database);
+    //    if (n!=SQLITE_OK) {
+    //        NSLog(@"数据库打开出错...");
+    //    }else
+    //    {
+    //        NSLog(@"数据库打开成功...");
+    //    }
     const char *sql_stmt = [query UTF8String];
     NSDictionary *error = nil;
     sqlite3_stmt *statement;
@@ -1461,9 +1613,13 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         error = [DbHelper captureSQLiteErrorFromDb:db];
         keepGoing = NO;
     } else {
+        NSString *strWithArg =@"";
         for (int b = 0; b < [querys count]; b++) {
             [self bindStatement:statement withArg:[querys objectAtIndex:b] atIndex:b+1];
+            //strWithArg = [NSString stringWithFormat:@"%@ ,%@",strWithArg,[querys objectAtIndex:b] ];
+            
         }
+        //NSLog(@"sql Arg %@",strWithArg);
     }
     while (keepGoing) {
         result = sqlite3_step (statement);
@@ -1520,13 +1676,17 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
                 keepGoing = NO;
             }
                 break;
-                default:
-                error = [DbHelper captureSQLiteErrorFromDb:db];
-                keepGoing = NO;
+            default:
+                //                error = [DbHelper captureSQLiteErrorFromDb:db];
+                //                keepGoing = NO;
+                break;
         }
     }
     sqlite3_finalize (statement);
+    
     if (error) {
+        //NSLog(@"executeSqlWithDictSE  options >>%@",options);
+        NSLog(@"executeSqlWithDictSE  error >> %@",error);
         return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:error];
     }
     [resultSet setObject:resultRows forKey:@"rows"];
@@ -1534,6 +1694,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     if (hasInsertId) {
         [resultSet setObject:insertId forKey:@"insertId"];
     }
+    //[self closeSE:dbPath];
+    
     return [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultSet];
 }
 
@@ -1644,7 +1806,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
                 keepGoing = NO;
                 break;
                 
-                default:
+            default:
                 error = [DbHelper captureSQLiteErrorFromDb:db];
                 keepGoing = NO;
         }
@@ -1745,7 +1907,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
             return QUOTA_ERR;
         case SQLITE_CONSTRAINT:
             return CONSTRAINT_ERR;
-            default:
+        default:
             return UNKNOWN_ERR;
     }
 }
