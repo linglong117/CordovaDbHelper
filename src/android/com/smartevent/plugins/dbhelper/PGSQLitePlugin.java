@@ -1,6 +1,7 @@
 package com.smartevent.plugins.dbhelper;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,7 +26,7 @@ public class PGSQLitePlugin {
 
 	private Hashtable<String, SQLiteDatabase> openDbs = new Hashtable<String, SQLiteDatabase>();
 	private Context ctx;
-	private String seDbName="";
+	private String seDbName = "";
 
 	public PGSQLitePlugin(Activity activity, JSONArray obj) {
 		// TODO Auto-generated constructor stub
@@ -139,8 +140,7 @@ public class PGSQLitePlugin {
 		Log.e("=============", result.getMessage());
 		return result;
 	}
-	
-	
+
 	public PluginResult queryScalar(JSONArray data) {
 		PluginResult result = null;
 		try {
@@ -179,11 +179,11 @@ public class PGSQLitePlugin {
 			// }
 			Cursor cs = db.query(tableName, _columns, where, _whereArgs,
 					groupBy, having, orderBy, limit);
-			
+
 			if (cs != null) {
 				JSONObject res = new JSONObject();
 				JSONArray rows = new JSONArray();
-				
+
 				if (cs.moveToFirst()) {
 					String[] names = cs.getColumnNames();
 					int namesCoint = names.length;
@@ -211,8 +211,6 @@ public class PGSQLitePlugin {
 		Log.e("=============", result.getMessage());
 		return result;
 	}
-	
-	
 
 	public PluginResult updateQuery(JSONArray data) {
 		PluginResult result = null;
@@ -283,53 +281,41 @@ public class PGSQLitePlugin {
 		return result;
 	}
 
-	/*public PluginResult insertQuery(JSONArray data) {
-		PluginResult result = null;
-		try {
-			String dbName = data.getString(0);
-			String tableName = data.getString(1);
-			JSONObject values = (JSONObject) data.get(2);
-			JSONArray names = values.names();
-			int vLen = names.length();
-			SQLiteDatabase db = getDb(dbName);
-			ContentValues _values = new ContentValues();
-			for (int i = 0; i < vLen; i++) {
-				String name = names.getString(i);
-				_values.put(name, values.getString(name));
-			}
-			long id = db.insert(tableName, null, _values);
-			if (id == -1) {
-				result = new PluginResult(PluginResult.Status.ERROR,
-						"Insert error");
-			} else {
-				result = new PluginResult(PluginResult.Status.OK, id);
-			}
-		} catch (Exception e) {
-			Log.e("PGSQLitePlugin", e.getMessage());
-			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
-		}
-		return result;
-	}*/
-	
+	/*
+	 * public PluginResult insertQuery(JSONArray data) { PluginResult result =
+	 * null; try { String dbName = data.getString(0); String tableName =
+	 * data.getString(1); JSONObject values = (JSONObject) data.get(2);
+	 * JSONArray names = values.names(); int vLen = names.length();
+	 * SQLiteDatabase db = getDb(dbName); ContentValues _values = new
+	 * ContentValues(); for (int i = 0; i < vLen; i++) { String name =
+	 * names.getString(i); _values.put(name, values.getString(name)); } long id
+	 * = db.insert(tableName, null, _values); if (id == -1) { result = new
+	 * PluginResult(PluginResult.Status.ERROR, "Insert error"); } else { result
+	 * = new PluginResult(PluginResult.Status.OK, id); } } catch (Exception e) {
+	 * Log.e("PGSQLitePlugin", e.getMessage()); result = new
+	 * PluginResult(PluginResult.Status.ERROR, e.getMessage()); } return result;
+	 * }
+	 */
+
 	public PluginResult insertQuery(JSONArray data) {
 		PluginResult result = null;
 		try {
 			String dbName = data.getString(0);
 			String tableName = data.getString(1);
-			JSONArray columns=data.getJSONArray(2);
-			JSONArray values=data.getJSONArray(3);
-		
+			JSONArray columns = data.getJSONArray(2);
+			JSONArray values = data.getJSONArray(3);
+
 			long id = -1;
 			SQLiteDatabase db = getDb(dbName);
 			ContentValues _values = null;
-			JSONArray values_=null;
+			JSONArray values_ = null;
 			for (int i = 0; i < values.length(); i++) {
-				values_=values.getJSONArray(i);
-				_values=new ContentValues();
+				values_ = values.getJSONArray(i);
+				_values = new ContentValues();
 				for (int j = 0; j < values_.length(); j++) {
 					_values.put(columns.getString(j), values_.getString(j));
 				}
-				 id = db.insert(tableName, null, _values);
+				id = db.insert(tableName, null, _values);
 			}
 			if (id == -1) {
 				result = new PluginResult(PluginResult.Status.ERROR,
@@ -512,6 +498,8 @@ public class PGSQLitePlugin {
 	public void openDatabese(JSONArray data) {
 		try {
 			String storage = PGSQLitePlugin.USE_INTERNAL;
+			// String storage = PGSQLitePlugin.USE_EXTERNAL;
+
 			String dbName = data.getString(0);
 			seDbName = dbName;
 			JSONObject options = getJSONObjectAt(data, 1);
@@ -523,7 +511,11 @@ public class PGSQLitePlugin {
 							Environment.MEDIA_MOUNTED)) {
 				// new PluginResult(PluginResult.Status.ERROR,
 				// "SDCard not mounted")
+				Log.e("sdcard  >>>>>> ", "SDCard not mounted");
 				return;
+			} else {
+				Log.e("sdcard  >>>>>> ", "SDCard mounted");
+
 			}
 			String _dbName = null;
 			SQLiteDatabase db = getDb(dbName);
@@ -531,11 +523,15 @@ public class PGSQLitePlugin {
 			if (Environment.getExternalStorageState().equals(
 					Environment.MEDIA_MOUNTED)
 					&& !storage.equals(PGSQLitePlugin.USE_INTERNAL)) {
+
 				if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)) {
 					dbFile = new File(ctx.getExternalFilesDir(null), dbName);
 					if (!dbFile.exists()) {
 						dbFile.mkdirs();
+					} else {
+						Log.d(">>>>>>>>>>>>>>>>>>>>", "db  已存在");
 					}
+
 				} else {
 					dbFile = ctx.getDatabasePath(dbName);
 					if (!dbFile.exists()) {
@@ -559,28 +555,109 @@ public class PGSQLitePlugin {
 				}
 			} else {
 				dbFile = ctx.getDatabasePath(dbName);
+
+				File file = null;
+				file = Environment.getDataDirectory();
+				//Log.e("file  path >>>> ","getDataDirectory()=" + file.getPath());
+				String appDataPath = file.getAbsolutePath();
+				// 获取当前程序路径
+				String ss = ctx.getFilesDir().getAbsolutePath();
+				// 获取该程序的安装包路径
+				String path = ctx.getPackageResourcePath();
+
+				// 获取程序默认数据库路径
+				//ctx.getDatabasePath(ss).getAbsolutePath();
+				//String mpath = ctx.getFilesDir().getAbsolutePath() + "/"+ dbName; 
+				// data/data目录
+				String dbpath = ctx.getDatabasePath(dbName).getAbsolutePath();
+				String dbDirPath = "/data/data/" + ctx.getPackageName()+"/databases";
+				File dbDir = new File(dbDirPath);
+				if (!dbDir.exists()) {
+					dbDir.mkdir();
+				}
+				//File mfile = new File(dbpath);
+				File dbf = new File(dbpath);
+				if (dbf.exists()) {
+					// dbf.delete();
+					// return;
+					Log.d("=====================", "db  文件已存在");
+				} else {
+					Log.d("=====================", "db  文件不存在,拷贝asset/www/db文件");
+					final String[] sample_dbName = { dbName };
+					int assetDbSize = sample_dbName.length;
+					//File databaseFile = new File("/data/data/com.simpleevent.checkin/databases/");
+					// check if databases folder exists, if not create one and its
+					// subfolders
+					
+//					if (!databaseFile.exists()) {
+//						databaseFile.mkdir();
+//					}
+					for (int i = 0; i < assetDbSize; i++) {
+						String outFilename = null;
+						//outFilename = "/data/data/com.simpleevent.checkin/databases/" + dbName;
+						outFilename = dbpath;
+						File _dbfile = new File(outFilename);
+						try {
+							InputStream in = ctx.getAssets().open("www/" + dbName);
+							OutputStream out = new FileOutputStream(outFilename);
+							// Transfer bytes from the sample input file to the
+							// sample output file
+							byte[] buf = new byte[1024];
+							int len;
+							while ((len = in.read(buf)) > 0) {
+								out.write(buf, 0, len);
+							}
+							out.flush();
+							// Close the streams
+							out.close();
+							in.close();
+						} catch (Exception e) {
+							Log.e("PGSQLitePlugin",
+									"error get db from assets=" + e.getMessage());
+						}
+					}
+				}
 			}
+
 			_dbName = dbFile.getPath();
 			int status = 0;
 			if (db == null) {
 				if (!dbFile.exists()) {
 					status = 1;
-					try {
-						InputStream assetsDB = this.ctx.getAssets().open(
-								"www/" + dbName);
-						OutputStream dbOut = new FileOutputStream(_dbName);
-						byte[] buffer = new byte[1024];
-						int length;
-						while ((length = assetsDB.read(buffer)) > 0) {
-							dbOut.write(buffer, 0, length);
+					
+					String dbpath = ctx.getDatabasePath(dbName).getAbsolutePath();
+					String dbDirPath = "/data/data/" + ctx.getPackageName()+"/databases";
+					File dbDir = new File(dbDirPath);
+					if (!dbDir.exists()) {
+						dbDir.mkdir();
+					}
+					File dbf = new File(dbpath);
+					final String[] sample_dbName = { dbName };
+					int assetDbSize = sample_dbName.length;
+				
+					for (int i = 0; i < assetDbSize; i++) {
+						String outFilename = null;
+						outFilename = dbpath;
+						File sampleFile = new File(outFilename);
+						try {
+							InputStream in = ctx.getAssets().open("www/" + dbName);
+							OutputStream out = new FileOutputStream(outFilename);
+							// Transfer bytes from the sample input file to the
+							// sample output file
+							byte[] buf = new byte[1024];
+							int len;
+							while ((len = in.read(buf)) > 0) {
+								out.write(buf, 0, len);
+							}
+							out.flush();
+							// Close the streams
+							out.close();
+							in.close();
+							status = 2;
+						} catch (Exception e) {
+							Log.e("PGSQLitePlugin",
+									"error get db from assets=" + e.getMessage());
 						}
-						dbOut.flush();
-						dbOut.close();
-						assetsDB.close();
-						status = 2;
-					} catch (Exception e) {
-						Log.e("PGSQLitePlugin",
-								"error get db from assets=" + e.getMessage());
 					}
 				}
 				db = SQLiteDatabase.openDatabase(_dbName, null,
@@ -598,7 +675,7 @@ public class PGSQLitePlugin {
 			System.err.println(e);
 		}
 	}
-	
+
 	@SuppressWarnings("deprecation")
 	public boolean reOpenDatabese(JSONArray data) {
 		boolean result = false;
@@ -651,6 +728,25 @@ public class PGSQLitePlugin {
 				}
 			} else {
 				dbFile = ctx.getDatabasePath(dbName);
+
+				if (!dbFile.exists()) {
+					dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+
+					if (!dbFile.exists()) {
+						StatFs stat = new StatFs("/data/");
+						long blockSize = stat.getBlockSize();
+						long availableBlocks = stat.getBlockCount();
+						long size = blockSize * availableBlocks;
+						if (size >= 1024 * 1024 * 1024) {
+							dbFile = ctx.getDatabasePath(dbName);
+						} else {
+							dbFile = new File(ctx.getExternalFilesDir(null),
+									dbName);
+						}
+						Log.i("blockSize * availableBlocks",
+								Long.toString(size));
+					}
+				}
 			}
 			_dbName = dbFile.getPath();
 			int status = 0;
@@ -676,9 +772,9 @@ public class PGSQLitePlugin {
 								"error get db from assets=" + e.getMessage());
 						return false;
 					}
-				}else {
-					
-					deleteFile(dbFile);//TODO
+				} else {
+
+					deleteFile(dbFile);// TODO
 					status = 1;
 					try {
 						InputStream assetsDB = this.ctx.getAssets().open(
@@ -718,14 +814,13 @@ public class PGSQLitePlugin {
 		return result;
 	}
 
-	
 	public static void deleteFile(File file) {
 		String sdState = Environment.getExternalStorageState();
 		if (sdState.equals(Environment.MEDIA_MOUNTED)) {
 			if (file.exists()) {
 				if (file.isFile()) {
 					file.delete();
-				}else if (file.isDirectory()) {// 如果它是一个目录
+				} else if (file.isDirectory()) {// 如果它是一个目录
 					// 声明目录下所有的文件 files[];
 					File files[] = file.listFiles();
 					for (int i = 0; i < files.length; i++) { // 遍历目录下所有的文件
@@ -735,9 +830,8 @@ public class PGSQLitePlugin {
 				file.delete();
 			}
 		}
-	} 
-	
-	
+	}
+
 	public PluginResult closeDatabese(JSONArray data) {
 		PluginResult result = null;
 		try {
@@ -756,9 +850,9 @@ public class PGSQLitePlugin {
 
 		return result;
 	}
-	
+
 	public void closeDatabeseSE(JSONArray data) {
-		//PluginResult result = null;
+		// PluginResult result = null;
 		try {
 			Log.e("PGSQLitePlugin", "close action");
 			String dbName = data.getString(0);
@@ -767,23 +861,24 @@ public class PGSQLitePlugin {
 				db.close();
 				openDbs.remove(dbName);
 			}
-			//result = new PluginResult(PluginResult.Status.OK);
+			// result = new PluginResult(PluginResult.Status.OK);
 			Log.v("closeDatabeseSE >> ", "OK");
 		} catch (Exception e) {
 			Log.e("PGSQLitePlugin", e.getMessage());
-			//result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+			// result = new PluginResult(PluginResult.Status.ERROR,
+			// e.getMessage());
 			Log.v("closeDatabeseSE >> ", "ERROR");
 		}
 
-		//return result;
+		// return result;
 	}
 
 	/**
 	 * 
 	 * @param oldPath
-	 *            String ԭ�ļ�·�� �磺c:/fqf.txt
+	 *            String 源路径c:/fqf.txt
 	 * @param newPath
-	 *            String ���ƺ�·�� �磺f:/fqf.txt
+	 *            String 目标路径f:/fqf.txt
 	 */
 	public void copyFile(String oldPath, String newPath) {
 		try {
@@ -793,7 +888,7 @@ public class PGSQLitePlugin {
 			FileOutputStream fs = new FileOutputStream(newPath);
 			byte[] buffer = new byte[1444];
 			while ((byteread = inStream.read(buffer)) != -1) {
-				bytesum += byteread; // �ֽ��� �ļ���С
+				bytesum += byteread; // 
 				System.out.println(bytesum);
 				fs.write(buffer, 0, byteread);
 			}
@@ -801,7 +896,7 @@ public class PGSQLitePlugin {
 			fs.close();
 			inStream.close();
 		} catch (Exception e) {
-			System.out.println("���Ƶ����ļ���������");
+			System.out.println("copyFile" + e.toString());
 			e.printStackTrace();
 
 		}
