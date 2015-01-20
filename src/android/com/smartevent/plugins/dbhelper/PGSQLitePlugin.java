@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Hashtable;
 
 import org.apache.cordova.PluginResult;
@@ -78,7 +80,7 @@ public class PGSQLitePlugin {
 	public PluginResult query(JSONArray data) {
 		PluginResult result = null;
 		try {
-			Log.e("PGSQLitePlugin", "query");
+			//Log.e("PGSQLitePlugin", "query");
 			String dbName = data.getString(0);
 			String tableName = data.getString(1);
 			JSONArray columns = getJSONArrayAt(data, 2);
@@ -141,6 +143,144 @@ public class PGSQLitePlugin {
 		return result;
 	}
 
+	
+	public int query_having(JSONArray data) {
+		PluginResult result = null;
+		int rowCount =-1;
+		try {
+			//Log.e("PGSQLitePlugin", "query");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = getJSONArrayAt(data, 2);
+			String where = getStringAt(data, 3);
+			JSONArray whereArgs = getJSONArrayAt(data, 4);
+//			String groupBy = getStringAt(data, 5);
+//			String having = getStringAt(data, 6);
+//			String orderBy = getStringAt(data, 7);
+//			String limit = getStringAt(data, 8);
+
+			String[] _whereArgs = null;
+			if (whereArgs != null) {
+				int vLen = whereArgs.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_whereArgs[i] = whereArgs.getString(i);
+				}
+			}
+			String[] _columns = null;
+			if (columns != null) {
+				int vLen = columns.length();
+				_columns = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_columns[i] = columns.getString(i);
+				}
+			}
+
+			SQLiteDatabase db = getDb(dbName);
+			String[] ss = new String[2];
+			Cursor cs = db.query(tableName, _columns, where, _whereArgs, "", "", "", "");
+			
+			if (cs != null) {
+				JSONObject res = new JSONObject();
+				JSONArray rows = new JSONArray();
+
+				if (cs.moveToFirst()) {
+					String[] names = cs.getColumnNames();
+					int namesCoint = names.length;
+					do {
+						JSONObject row = new JSONObject();
+						for (int i = 0; i < namesCoint; i++) {
+							String name = names[i];
+							row.put(name, cs.getString(cs.getColumnIndex(name)));
+						}
+						rows.put(row);
+					} while (cs.moveToNext());
+				}
+				res.put("rows", rows);
+				cs.close();
+				//Log.e("PGSQLitePlugin", "query::count=" + rows.length());
+				rowCount = rows.length();
+				//result = new PluginResult(PluginResult.Status.OK, res);
+			} else {
+				//result = new PluginResult(PluginResult.Status.ERROR,"Error execute query");
+				rowCount =-1;
+				
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			//result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+			rowCount=-1;
+		}
+		return rowCount;
+	}
+
+	public JSONArray query_having_in(JSONArray data) {
+		PluginResult result = null;
+		int rowCount =-1;
+		JSONArray mresult = new JSONArray();
+		try {
+			Log.e("PGSQLitePlugin", "query");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = getJSONArrayAt(data, 2);
+			String where = getStringAt(data, 3);
+			//JSONArray whereArgs = getJSONArrayAt(data, 4);
+			//String[] whereArgs = (String[]) data.get(4);
+			String whereArgs = data.getString(4);
+			
+			String[] _columns = null;
+			if (columns != null) {
+				int vLen = columns.length();
+				_columns = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_columns[i] = columns.getString(i);
+				}
+			}
+				
+			SQLiteDatabase db = getDb(dbName);
+			String[] ss = new String[2];
+			//Cursor cs = db.query(tableName, _columns, where, _whereArgs, "", "", "", "");
+			//String strsql = "select " + _columns[0] +" from "+ tableName + " where attenderId in ( " + whereArgs + " )" ;
+			String strsql = "select " + _columns[0] +" from "+ tableName + " where "+ _columns[0] + " in (" + whereArgs+ " )" ;
+			
+			Cursor  cs =	db.rawQuery(strsql, null);
+			if (cs != null) {
+				JSONObject res = new JSONObject();
+				JSONArray rows = new JSONArray();
+				if (cs.moveToFirst()) {
+					String[] names = cs.getColumnNames();
+					int namesCoint = names.length;
+					do {
+						JSONObject row = new JSONObject();
+						JSONArray arr = new JSONArray();
+						for (int i = 0; i < namesCoint; i++) {
+							String name = names[i];
+							row.put(name, cs.getString(cs.getColumnIndex(name)));
+							arr.put(cs.getString(cs.getColumnIndex(name)));
+						}
+						rows.put(row);
+						mresult.put(arr);
+					} while (cs.moveToNext());
+				}
+				res.put("rows", rows);
+				//mresult.put("rows", rows);
+				cs.close();
+				//Log.e("PGSQLitePlugin", "query::count=" + rows.length());
+				rowCount = rows.length();
+				//result = new PluginResult(PluginResult.Status.OK, res);
+			} else {
+				//result = new PluginResult(PluginResult.Status.ERROR,"Error execute query");
+				rowCount =-1;
+				
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			//result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+			rowCount=-1;
+		}
+		return mresult;
+	}
+	
 	public PluginResult queryScalar(JSONArray data) {
 		PluginResult result = null;
 		try {
@@ -215,12 +355,14 @@ public class PGSQLitePlugin {
 	public PluginResult updateQuery(JSONArray data) {
 		PluginResult result = null;
 		try {
-			Log.e("PGSQLitePlugin", "updateQuery");
+			//Log.e("PGSQLitePlugin", "updateQuery");
 			String dbName = data.getString(0);
 			String tableName = data.getString(1);
 			JSONObject values = (JSONObject) data.get(2);
 			String where = getStringAt(data, 3, "1");
 			JSONArray whereArgs = getJSONArrayAt(data, 4);
+			
+			//String strupdate = data.getString(4);
 
 			String[] _whereArgs = null;
 			if (whereArgs != null) {
@@ -238,12 +380,45 @@ public class PGSQLitePlugin {
 				String name = names.getString(i);
 				_values.put(name, values.getString(name));
 			}
-
 			SQLiteDatabase db = getDb(dbName);
 			long count = db.update(tableName, _values, where, _whereArgs);
 			result = new PluginResult(PluginResult.Status.OK, count);
-			Log.e("PGSQLitePlugin", "updateQuery::count=" + count);
+			//Log.e("PGSQLitePlugin", "updateQuery::count=" + count);
 
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+
+		return result;
+	}
+	
+	public PluginResult updateQuery_in(JSONArray data) {
+		PluginResult result = null;
+		try {
+			//Log.e("PGSQLitePlugin", "updateQuery");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONObject values = (JSONObject) data.get(2);
+			String where = getStringAt(data, 3, "1");
+			//String where = getStringAt(data, 3, "1");
+
+			//JSONArray whereArgs = getJSONArrayAt(data, 4);
+			
+			String strupdate = data.getString(4);
+
+			JSONArray names = values.names();
+			int vLenVal = names.length();
+			ContentValues _values = new ContentValues();
+			for (int i = 0; i < vLenVal; i++) {
+				String name = names.getString(i);
+				_values.put(name, values.getString(name));
+			}
+
+			SQLiteDatabase db = getDb(dbName);
+			long count = db.update(tableName, _values, "attenderId in(?)", new String[]{"'3900d57b-636c-11e4-baec-f80f41fdc7f8','6a19faca-9d58-11e4-b656-f80f41fdc7f8'"});
+			result = new PluginResult(PluginResult.Status.OK, count);
+			//Log.e("PGSQLitePlugin", "updateQuery::count=" + count);
 		} catch (Exception e) {
 			Log.e("PGSQLitePlugin", e.getMessage());
 			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
@@ -296,28 +471,168 @@ public class PGSQLitePlugin {
 	 * PluginResult(PluginResult.Status.ERROR, e.getMessage()); } return result;
 	 * }
 	 */
-
 	public PluginResult insertQuery(JSONArray data) {
 		PluginResult result = null;
 		try {
+			Log.i("data length >>>> ", data.length()+"");
 			String dbName = data.getString(0);
 			String tableName = data.getString(1);
 			JSONArray columns = data.getJSONArray(2);
 			JSONArray values = data.getJSONArray(3);
+			
+			JSONArray  existsPkValuses = new JSONArray();
+			String pk ="";
+			JSONArray pkValues= new JSONArray();
+			if(data.length()==6)
+			{
+				int rowCount=-1;
+				pk = data.getString(4);
+				pkValues = data.getJSONArray(5);
+				//判断该条记录是否存在
+				JSONArray selectData = new JSONArray();
+				JSONArray updateData = new JSONArray();
+				
+				selectData.put(dbName);
+				selectData.put(tableName);
+				selectData.put(new JSONArray().put(pk));
+				//selectData.put(pk+"=?");//where
+				selectData.put(pk + "  in (?)");//where
 
-			long id = -1;
+				//				
+				updateData.put(dbName);
+				updateData.put(tableName);
+				//updateData.put(tableName);
+				
+				//ContentValues _pkvalue =null; 
+				JSONArray pkvalue = null;
+				
+				StringBuffer strbf_in = new StringBuffer();
+				 String str_in="";
+				String[] str_ins= null;
+				str_ins = new String[pkValues.length()];
+				for (int m = 0; m < pkValues.length(); m++) {
+				    String column = pkValues.getJSONArray(m).getString(0).toString();
+					column = "'"+column+"',";
+				    strbf_in.append(column);
+				    str_in = strbf_in.toString();
+				    str_in = str_in.substring(0, str_in.length()-1);
+				    
+				    str_ins[m] = column;
+				}
+				
+				selectData.put(str_in);
+				//
+				JSONArray  mresult  = query_having_in(selectData);
+				String str_update="";
+				if(mresult!=null && mresult.length()>0)
+				{
+					StringBuffer strbf_update= new StringBuffer();
+					for (int m = 0; m < mresult.length(); m++) {
+						pkvalue = pkValues.getJSONArray(m);
+						existsPkValuses.put(pkvalue);
+						
+						String _pkvalue = mresult.getJSONArray(m).getString(0).toString();
+						_pkvalue = "'" + _pkvalue + "',";
+						strbf_update.append(_pkvalue);
+					}
+					str_update = strbf_update.toString();
+					str_update = str_update.substring(0, str_update.length()-1);
+					
+					//更新时间
+					JSONObject obj = new JSONObject();
+					Date date = null;
+					SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
+					date = new Date();
+					String strTime = format.format(date);
+					obj.put("SyncTime", strTime);
+					
+					SQLiteDatabase _db = getDb(dbName);
+					String sql_update = "update " + tableName +" set SyncTime='"+ strTime +"' where  " +pk +" in("+str_update+")";
+					_db.execSQL(sql_update);
+
+//					updateData.put(obj);
+//					updateData.put(pk + "in(?)");
+//					updateData.put(str_update);
+//				    // int r =	_db.update(tableName, obj, whereClause, whereArgs);
+//					result = updateQuery(updateData);
+					Log.d("update >>>> ", "  2015-1-20 12:28:17");
+				}
+				
+				
+					
+//					// _pkvalue = new ContentValues();
+//					pkvalue = pkValues.getJSONArray(m);
+//					selectData.put(pkvalue);
+//					// Cursor cs = db.query(tableName, _columns, where,
+//					// _whereArgs, "", "", "", "");
+//					if (pk.length() > 0) {
+//						rowCount = query_having(selectData);
+//						//Log.i("select  result >>>> ", rowCount + "");
+//						if (rowCount > 0) {
+//							existsPkValuses.put(pkvalue);
+//							// update synctime
+//							Date date = null;
+//							SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
+//							date = new Date();
+//							String str = format.format(date);
+//							obj.put("SyncTime", str);
+//
+//							updateData.put(obj);
+//							updateData.put(pk + "=?");
+//							updateData.put(pkvalue);
+//
+//							result = updateQuery(updateData);
+//							//Log.d("update  synctime result >>>>> ", m+ " >>  "+ result.getMessage());
+//						}
+//					}
+					//Log.d("查询记录是否存在>>>>>","dddddsssss");
+			
+				//Log.d("查询记录是否存在>>>>>","dddd");
+
+			}
+			
+			long id = 0;
 			SQLiteDatabase db = getDb(dbName);
 			ContentValues _values = null;
 			JSONArray values_ = null;
 			for (int i = 0; i < values.length(); i++) {
 				values_ = values.getJSONArray(i);
 				_values = new ContentValues();
+				
+				boolean fflag = false;
 				for (int j = 0; j < values_.length(); j++) {
+					if(pk.length()>0)
+					{
+						if(existsPkValuses.length()>0)
+						{
+							//判断 pk 是否已存在, 若存在跳出本次循环
+							if(columns.getString(j).toLowerCase().equals(pk.toLowerCase()))
+							{
+								for(int n=0;n<existsPkValuses.length();n++)
+								{
+									//boolean flag = existsPkValuses.getJSONArray(n).getString(0).equals(values_.getString(j));
+									if(existsPkValuses.getJSONArray(n).getString(0).equals(values_.getString(j)));
+									{
+										fflag=true;
+										break;
+									}
+								}
+							}
+						}	
+					}
 					_values.put(columns.getString(j), values_.getString(j));
 				}
-				id = db.insert(tableName, null, _values);
+				if(!fflag)
+				{
+					id = db.insert(tableName, null, _values);
+				}
+				//Log.d("i>>>>", i+"");
 			}
-			if (id == -1) {
+			db.close();
+			if(id==0){
+				result = new PluginResult(PluginResult.Status.OK,
+						"Insert zero");
+			}else if (id == -1) {
 				result = new PluginResult(PluginResult.Status.ERROR,
 						"Insert error");
 			} else {
@@ -327,9 +642,34 @@ public class PGSQLitePlugin {
 			Log.e("PGSQLitePlugin", e.getMessage());
 			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
 		}
+		Log.i("500  rows  times >>>>>", "xxxx");
 		return result;
 	}
 
+	private String getColumnStringByJsonArray(JSONArray columns)
+	{
+		String strColunm="";
+		String[] _whereArgs = null;
+		StringBuffer strbuf = new StringBuffer();
+		try {
+			if (columns != null) {
+				int vLen = columns.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					String column = columns.getString(i).toString();
+					column = column+"=? and ";
+					strbuf.append(column);
+				}
+				strColunm = strbuf.toString();
+				strColunm = strColunm.substring(0, strColunm.length()-4);
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+			return strColunm;
+		}
+		return strColunm;
+	}
+	
 	public PluginResult batchRawQuery(JSONArray data) {
 		return batchRawQuery(data, false);
 	}

@@ -1276,6 +1276,146 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     return resultDic;
 }
 
+
+/*
+* 插入验证
+*
+*/
+-(NSMutableArray*)query_in:(NSString *)sql
+{
+    NSMutableArray *array = [NSMutableArray array];
+    NSString *dbPath = [NSString stringWithFormat:@"%@",databasePath];
+    
+//    NSValue *dbPointer = [openDBs objectForKey:dbPath];
+//    if (dbPointer == NULL) {
+//        //return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No such database, you must open it first"];
+//    }
+//    sqlite3 *db = [dbPointer pointerValue];
+//    //database = db;
+    
+    int n = sqlite3_open([dbPath UTF8String], &database);
+    if (n!=SQLITE_OK) {
+        NSLog(@"can not open the database.");
+        return array;
+    }
+    
+    sqlite3_stmt *stmt = nil;
+    char * msql = (char*)[sql UTF8String];
+    sqlite3_prepare_v2(database, msql, -1, &stmt, NULL);
+    int code = sqlite3_step(stmt);
+    while (code==SQLITE_ROW) {
+        NSMutableArray *arr = [NSMutableArray array];
+        
+        char *c;
+        NSString *str = [NSString string];
+        
+        c = (char*)sqlite3_column_text(stmt, 0);
+        if (c) {
+            str = [NSString stringWithUTF8String:c];
+        }else
+        {
+            str=@"";
+        }
+        //[arr addObject:str];
+        
+        [array addObject:str];
+        code = sqlite3_step(stmt);
+    }
+    sqlite3_finalize(stmt);
+    sqlite3_close(database);
+    return array;
+}
+
+
+/*
+ * update synctime
+*/
+-(NSInteger)update_ins:(NSString *)sql{
+    
+    NSString *dbPath = [NSString stringWithFormat:@"%@",databasePath];
+    
+    int n = sqlite3_open([dbPath UTF8String], &database);
+    if(n != SQLITE_OK){
+        NSLog(@"can't open the database.");
+        return -1;
+    }
+    //NSDate *now = [NSDate date];
+    //NSLog(@"%@",[now description]);
+    //NSString *nowtime = [now description];
+    int result=-1;
+    
+    NSString *s = [[NSString alloc] initWithUTF8String:[sql UTF8String]];
+    char *msql = (char *) [s UTF8String];
+    char *merror = nil;
+    //int resultUpdatetblChangeLog = sqlite3_exec(database, msql, 0, 0,&merror);
+    result = sqlite3_exec(database, msql, 0, 0,&merror);
+    if(result!= SQLITE_OK){
+        NSLog(@" sql: %@" ,s);
+        NSLog(@"r = %d",result);
+        sqlite3_close(database);
+        return -1;
+    }
+    //NSLog(@"update sql: %@",ssql);
+    NSLog(@"m = %d",result);
+    if (merror) {
+        return -1;
+    }
+    sqlite3_close(database);
+    return result;
+}
+
+
+
+- (NSString*) getQuereyIns:(NSMutableArray*)array
+{
+    NSString *sql = [NSString string];
+    for (int i=0; i<[array count]; i++) {
+        NSString *s = @"";
+        s = [[array objectAtIndex:i] objectAtIndex:0];
+        sql = [sql stringByAppendingFormat:@"'%@',",s];
+    }
+     sql = [sql substringToIndex:[sql length]-1];
+    
+    return sql;
+}
+
+- (NSString*) getUpdateIns:(NSMutableArray*)array
+{
+    NSString *sql = [NSString string];
+    for (int i=0; i<[array count]; i++) {
+        NSString *s = @"";
+        s = [array objectAtIndex:i];
+        sql = [sql stringByAppendingFormat:@"'%@',",s];
+    }
+    sql = [sql substringToIndex:[sql length]-1];
+    
+    return sql;
+}
+
+
+/**
+ * @brief
+ @Expose
+ */
+- (NSString*)getCurrentDateString
+{
+    NSDate *date = [NSDate date];
+    NSTimeZone *zone = [NSTimeZone systemTimeZone];
+    NSInteger interval = [zone secondsFromGMTForDate: date];
+    NSDate *localeDate = [date  dateByAddingTimeInterval: interval];
+    NSLog(@"%@", localeDate);
+    
+    //实例化一个NSDateFormatter对象
+    
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    //设定时间格式,这里可以设置成自己需要的格式
+    [dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+    //用[NSDate date]可以获取系统当前时间
+    NSString *currentDateStr = [dateFormatter stringFromDate:date];
+    return currentDateStr;
+}
+
+
 -(void) executeSqlBatchSE: (CDVInvokedUrlCommand*)command
 {
     // NSMutableArray *options = [command.arguments objectAtIndex:0];
@@ -1304,19 +1444,84 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         NSMutableArray *columns = [NSMutableArray array];
         NSMutableArray *querys = [NSMutableArray array];
         
+        NSMutableArray *existsPkValuses = [NSMutableArray array];
+        
+        
+        //
+        NSString *pk = [NSString string];
+        NSMutableArray *pkValues = [NSMutableArray array];
+        
         dbName = [options objectAtIndex:0];
         tbName = [options objectAtIndex:1];
         columns = [options objectAtIndex:2];
         querys = [options objectAtIndex:3];
         
+        if ([options count]==6) {
+            pk = [options objectAtIndex:4];
+            pkValues = [options objectAtIndex:5];
+            
+            NSString *str_in = @"";
+            if ([pkValues count]>0) {
+                str_in = [self getQuereyIns:pkValues];
+            }
+            NSString *sql = [NSString string];
+            sql = [NSString stringWithFormat:@"select %@ from %@ where %@ in (%@)",pk,tbName,pk,str_in];
+            
+            NSMutableArray *_array = [self query_in:sql];
+            existsPkValuses = [NSMutableArray arrayWithArray:_array];
+            
+            NSLog(@" array >>> %@",[_array description]);
+            
+            if ([_array count]>0) {
+                //update
+                NSString *str_update = [NSString string];
+                
+                str_update = [NSString stringWithFormat:@"update %@ set SyncTime='%@' where %@ in (%@)",tbName,[self getCurrentDateString],pk,[self getUpdateIns:_array]];
+                
+                int result = [self update_ins:str_update];
+                
+                NSLog(@"result %d",result);
+            }
+        }
+        
+        NSInteger pk_index=-1;
+        //new querys  过滤掉已经插入的数据
+        NSMutableArray *new_querys = [NSMutableArray array];
+        for(int m=0;m<[columns count]; m++)
+        {
+            if ([[[columns objectAtIndex:m] lowercaseString] isEqualToString:[pk lowercaseString]]) {
+                
+                pk_index = m;
+                break;
+            }
+        }
+
         if (querys && [querys count]>0) {
-            for (int i=0; i<[querys count]; i++) {
+            
+            for (int n=0; n<[querys count]; n++) {
+                NSMutableArray *_arr = [querys objectAtIndex:n];
+                
+                Boolean flag = false;
+                
+                for (int t=0; t<[existsPkValuses count]; t++) {
+                    if ([[existsPkValuses objectAtIndex:t] isEqualToString:[_arr objectAtIndex:pk_index]]) {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (!flag) {
+                    [new_querys addObject:_arr];
+                }
+            }
+
+            
+            for (int i=0; i<[new_querys count]; i++) {
                 NSMutableArray *putArray = [NSMutableArray array];
                 [putArray addObject:dbName];
                 [putArray addObject:tbName];
                 [putArray addObject:columns];
-                [putArray addObject:[querys objectAtIndex:i]];
                 
+                [putArray addObject:[new_querys objectAtIndex:i]];
                 
                 @synchronized(self) {
                     //pluginResult = [self executeSqlWithDictSE:command];
@@ -1335,7 +1540,6 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }else
     {
         options = [self getOptionsArray:command];
-        
         
         NSMutableArray *results = [NSMutableArray arrayWithCapacity:0];
         //CDVPluginResult* pluginResult;
