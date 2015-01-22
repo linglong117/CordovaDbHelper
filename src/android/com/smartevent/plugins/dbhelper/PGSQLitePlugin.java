@@ -1,2172 +1,1245 @@
-////
-////  SqlArg.h
-////  Checkin
-////
-////  Created by smartconf on 14-11-4.
-////
-////
+package com.smartevent.plugins.dbhelper;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Hashtable;
+
+import org.apache.cordova.PluginResult;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import android.R.bool;
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.os.Environment;
+import android.os.StatFs;
+import android.util.Log;
+
+public class PGSQLitePlugin {
+
+	private Hashtable<String, SQLiteDatabase> openDbs = new Hashtable<String, SQLiteDatabase>();
+	private Context ctx;
+	private String seDbName = "";
+
+	public PGSQLitePlugin(Activity activity, JSONArray obj) {
+		// TODO Auto-generated constructor stub
+		this.ctx = activity;
+	}
+
+	public SQLiteDatabase getDb(String path) {
+		SQLiteDatabase db = (SQLiteDatabase) openDbs.get(path);
+		return db;
+	}
+
+	public String getStringAt(JSONArray data, int position, String dret) {
+		String ret = getStringAt(data, position);
+		return (ret == null) ? dret : ret;
+	}
+
+	public String getStringAt(JSONArray data, int position) {
+		String ret = null;
+		try {
+			ret = data.getString(position);
+			// JSONArray convert JavaScript undefined|null to string "null", fix
+			// it
+			ret = (ret.equals("null")) ? null : ret;
+		} catch (Exception er) {
+		}
+		return ret;
+	}
+
+	public JSONArray getJSONArrayAt(JSONArray data, int position) {
+		JSONArray ret = null;
+		try {
+			ret = (JSONArray) data.get(position);
+		} catch (Exception er) {
+		}
+		;
+		return ret;
+	}
+
+	public JSONObject getJSONObjectAt(JSONArray data, int position) {
+		JSONObject ret = null;
+		try {
+			ret = (JSONObject) data.get(position);
+		} catch (Exception er) {
+		}
+		;
+		return ret;
+	}
+
+	public PluginResult query(JSONArray data) {
+		PluginResult result = null;
+		try {
+			//Log.e("PGSQLitePlugin", "query");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = getJSONArrayAt(data, 2);
+			String where = getStringAt(data, 3);
+			JSONArray whereArgs = getJSONArrayAt(data, 4);
+			String groupBy = getStringAt(data, 5);
+			String having = getStringAt(data, 6);
+			String orderBy = getStringAt(data, 7);
+			String limit = getStringAt(data, 8);
+
+			String[] _whereArgs = null;
+			if (whereArgs != null) {
+				int vLen = whereArgs.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_whereArgs[i] = whereArgs.getString(i);
+				}
+			}
+			String[] _columns = null;
+			if (columns != null) {
+				int vLen = columns.length();
+				_columns = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_columns[i] = columns.getString(i);
+				}
+			}
+
+			SQLiteDatabase db = getDb(dbName);
+			Cursor cs = db.query(tableName, _columns, where, _whereArgs,
+					groupBy, having, orderBy, limit);
+			if (cs != null) {
+				JSONObject res = new JSONObject();
+				JSONArray rows = new JSONArray();
+
+				if (cs.moveToFirst()) {
+					String[] names = cs.getColumnNames();
+					int namesCoint = names.length;
+					do {
+						JSONObject row = new JSONObject();
+						for (int i = 0; i < namesCoint; i++) {
+							String name = names[i];
+							row.put(name, cs.getString(cs.getColumnIndex(name)));
+						}
+						rows.put(row);
+					} while (cs.moveToNext());
+				}
+				res.put("rows", rows);
+				cs.close();
+				Log.e("PGSQLitePlugin", "query::count=" + rows.length());
+				result = new PluginResult(PluginResult.Status.OK, res);
+			} else {
+				result = new PluginResult(PluginResult.Status.ERROR,
+						"Error execute query");
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+		Log.e("=============", result.getMessage());
+		return result;
+	}
+
+	
+	public int query_having(JSONArray data) {
+		PluginResult result = null;
+		int rowCount =-1;
+		try {
+			//Log.e("PGSQLitePlugin", "query");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = getJSONArrayAt(data, 2);
+			String where = getStringAt(data, 3);
+			JSONArray whereArgs = getJSONArrayAt(data, 4);
+//			String groupBy = getStringAt(data, 5);
+//			String having = getStringAt(data, 6);
+//			String orderBy = getStringAt(data, 7);
+//			String limit = getStringAt(data, 8);
+
+			String[] _whereArgs = null;
+			if (whereArgs != null) {
+				int vLen = whereArgs.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_whereArgs[i] = whereArgs.getString(i);
+				}
+			}
+			String[] _columns = null;
+			if (columns != null) {
+				int vLen = columns.length();
+				_columns = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_columns[i] = columns.getString(i);
+				}
+			}
+
+			SQLiteDatabase db = getDb(dbName);
+			String[] ss = new String[2];
+			Cursor cs = db.query(tableName, _columns, where, _whereArgs, "", "", "", "");
+			
+			if (cs != null) {
+				JSONObject res = new JSONObject();
+				JSONArray rows = new JSONArray();
+
+				if (cs.moveToFirst()) {
+					String[] names = cs.getColumnNames();
+					int namesCoint = names.length;
+					do {
+						JSONObject row = new JSONObject();
+						for (int i = 0; i < namesCoint; i++) {
+							String name = names[i];
+							row.put(name, cs.getString(cs.getColumnIndex(name)));
+						}
+						rows.put(row);
+					} while (cs.moveToNext());
+				}
+				res.put("rows", rows);
+				cs.close();
+				//Log.e("PGSQLitePlugin", "query::count=" + rows.length());
+				rowCount = rows.length();
+				//result = new PluginResult(PluginResult.Status.OK, res);
+			} else {
+				//result = new PluginResult(PluginResult.Status.ERROR,"Error execute query");
+				rowCount =-1;
+				
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			//result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+			rowCount=-1;
+		}
+		return rowCount;
+	}
+
+	public JSONArray query_having_in(JSONArray data) {
+		PluginResult result = null;
+		int rowCount =-1;
+		JSONArray mresult = new JSONArray();
+		try {
+			Log.e("PGSQLitePlugin", "query");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = getJSONArrayAt(data, 2);
+			String where = getStringAt(data, 3);
+			//JSONArray whereArgs = getJSONArrayAt(data, 4);
+			//String[] whereArgs = (String[]) data.get(4);
+			String whereArgs = data.getString(4);
+			
+			String[] _columns = null;
+			if (columns != null) {
+				int vLen = columns.length();
+				_columns = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_columns[i] = columns.getString(i);
+				}
+			}
+				
+			SQLiteDatabase db = getDb(dbName);
+			String[] ss = new String[2];
+			//Cursor cs = db.query(tableName, _columns, where, _whereArgs, "", "", "", "");
+			//String strsql = "select " + _columns[0] +" from "+ tableName + " where attenderId in ( " + whereArgs + " )" ;
+			String strsql = "select " + _columns[0] +" from "+ tableName + " where "+ _columns[0] + " in (" + whereArgs+ " )" ;
+			
+			Cursor  cs =	db.rawQuery(strsql, null);
+			if (cs != null) {
+				JSONObject res = new JSONObject();
+				JSONArray rows = new JSONArray();
+				if (cs.moveToFirst()) {
+					String[] names = cs.getColumnNames();
+					int namesCoint = names.length;
+					do {
+						JSONObject row = new JSONObject();
+						JSONArray arr = new JSONArray();
+						for (int i = 0; i < namesCoint; i++) {
+							String name = names[i];
+							row.put(name, cs.getString(cs.getColumnIndex(name)));
+							arr.put(cs.getString(cs.getColumnIndex(name)));
+						}
+						rows.put(row);
+						mresult.put(arr);
+					} while (cs.moveToNext());
+				}
+				res.put("rows", rows);
+				//mresult.put("rows", rows);
+				cs.close();
+				//Log.e("PGSQLitePlugin", "query::count=" + rows.length());
+				rowCount = rows.length();
+				//result = new PluginResult(PluginResult.Status.OK, res);
+			} else {
+				//result = new PluginResult(PluginResult.Status.ERROR,"Error execute query");
+				rowCount =-1;
+				
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			//result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+			rowCount=-1;
+		}
+		return mresult;
+	}
+	
+	public PluginResult queryScalar(JSONArray data) {
+		PluginResult result = null;
+		try {
+			Log.e("PGSQLitePlugin", "query");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = getJSONArrayAt(data, 2);
+			String where = getStringAt(data, 3);
+			JSONArray whereArgs = getJSONArrayAt(data, 4);
+			String groupBy = getStringAt(data, 5);
+			String having = getStringAt(data, 6);
+			String orderBy = getStringAt(data, 7);
+			String limit = getStringAt(data, 8);
+
+			String[] _whereArgs = null;
+			if (whereArgs != null) {
+				int vLen = whereArgs.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_whereArgs[i] = whereArgs.getString(i);
+				}
+			}
+
+			String[] _columns = null;
+			if (columns != null) {
+				int vLen = columns.length();
+				_columns = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_columns[i] = columns.getString(i);
+				}
+			}
+
+			SQLiteDatabase db = getDb(dbName);
+			// if (db == null){
+			// db=getDb("www/db/" + dbName);
+			// }
+			Cursor cs = db.query(tableName, _columns, where, _whereArgs,
+					groupBy, having, orderBy, limit);
+
+			if (cs != null) {
+				JSONObject res = new JSONObject();
+				JSONArray rows = new JSONArray();
+
+				if (cs.moveToFirst()) {
+					String[] names = cs.getColumnNames();
+					int namesCoint = names.length;
+					do {
+						JSONObject row = new JSONObject();
+						for (int i = 0; i < namesCoint; i++) {
+							String name = names[i];
+							row.put(name, cs.getString(cs.getColumnIndex(name)));
+						}
+						rows.put(row);
+					} while (cs.moveToNext());
+				}
+				res.put("rows", rows);
+				cs.close();
+				Log.e("PGSQLitePlugin", "query::count=" + rows.length());
+				result = new PluginResult(PluginResult.Status.OK, res);
+			} else {
+				result = new PluginResult(PluginResult.Status.ERROR,
+						"Error execute query");
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+		Log.e("=============", result.getMessage());
+		return result;
+	}
+
+	public PluginResult updateQuery(JSONArray data) {
+		PluginResult result = null;
+		try {
+			//Log.e("PGSQLitePlugin", "updateQuery");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONObject values = (JSONObject) data.get(2);
+			String where = getStringAt(data, 3, "1");
+			JSONArray whereArgs = getJSONArrayAt(data, 4);
+			
+			//String strupdate = data.getString(4);
+
+			String[] _whereArgs = null;
+			if (whereArgs != null) {
+				int vLen = whereArgs.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_whereArgs[i] = whereArgs.getString(i);
+				}
+			}
+
+			JSONArray names = values.names();
+			int vLenVal = names.length();
+			ContentValues _values = new ContentValues();
+			for (int i = 0; i < vLenVal; i++) {
+				String name = names.getString(i);
+				_values.put(name, values.getString(name));
+			}
+			SQLiteDatabase db = getDb(dbName);
+			long count = db.update(tableName, _values, where, _whereArgs);
+			result = new PluginResult(PluginResult.Status.OK, count);
+			//Log.e("PGSQLitePlugin", "updateQuery::count=" + count);
+
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+
+		return result;
+	}
+	
+	public PluginResult updateQuery_in(JSONArray data) {
+		PluginResult result = null;
+		try {
+			//Log.e("PGSQLitePlugin", "updateQuery");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONObject values = (JSONObject) data.get(2);
+			String where = getStringAt(data, 3, "1");
+			//String where = getStringAt(data, 3, "1");
+
+			//JSONArray whereArgs = getJSONArrayAt(data, 4);
+			
+			String strupdate = data.getString(4);
+
+			JSONArray names = values.names();
+			int vLenVal = names.length();
+			ContentValues _values = new ContentValues();
+			for (int i = 0; i < vLenVal; i++) {
+				String name = names.getString(i);
+				_values.put(name, values.getString(name));
+			}
+
+			SQLiteDatabase db = getDb(dbName);
+			long count = db.update(tableName, _values, "attenderId in(?)", new String[]{"'3900d57b-636c-11e4-baec-f80f41fdc7f8','6a19faca-9d58-11e4-b656-f80f41fdc7f8'"});
+			result = new PluginResult(PluginResult.Status.OK, count);
+			//Log.e("PGSQLitePlugin", "updateQuery::count=" + count);
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+
+		return result;
+	}
+
+	public PluginResult deleteQuery(JSONArray data) {
+		PluginResult result = null;
+		try {
+			Log.e("PGSQLitePlugin", "deleteQuery");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			String where = getStringAt(data, 2);
+			JSONArray whereArgs = getJSONArrayAt(data, 3);
+			String[] _whereArgs = null;
+			if (whereArgs != null) {
+				int vLen = whereArgs.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					_whereArgs[i] = whereArgs.getString(i);
+				}
+			}
+			SQLiteDatabase db = getDb(dbName);
+			long count = db.delete(tableName, where, _whereArgs);
+			result = new PluginResult(PluginResult.Status.OK, count);
+			Log.e("PGSQLitePlugin", "deleteQuery::count=" + count);
+
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+
+		return result;
+	}
+
+	/*
+	 * public PluginResult insertQuery(JSONArray data) { PluginResult result =
+	 * null; try { String dbName = data.getString(0); String tableName =
+	 * data.getString(1); JSONObject values = (JSONObject) data.get(2);
+	 * JSONArray names = values.names(); int vLen = names.length();
+	 * SQLiteDatabase db = getDb(dbName); ContentValues _values = new
+	 * ContentValues(); for (int i = 0; i < vLen; i++) { String name =
+	 * names.getString(i); _values.put(name, values.getString(name)); } long id
+	 * = db.insert(tableName, null, _values); if (id == -1) { result = new
+	 * PluginResult(PluginResult.Status.ERROR, "Insert error"); } else { result
+	 * = new PluginResult(PluginResult.Status.OK, id); } } catch (Exception e) {
+	 * Log.e("PGSQLitePlugin", e.getMessage()); result = new
+	 * PluginResult(PluginResult.Status.ERROR, e.getMessage()); } return result;
+	 * }
+	 */
+	public PluginResult insertQuery(JSONArray data) {
+		PluginResult result = null;
+		try {
+			Log.i("data length >>>> ", data.length()+"");
+			String dbName = data.getString(0);
+			String tableName = data.getString(1);
+			JSONArray columns = data.getJSONArray(2);
+			JSONArray values = data.getJSONArray(3);
+			
+			JSONArray  existsPkValuses = new JSONArray();
+			String pk ="";
+			JSONArray pkValues= new JSONArray();
+			if(data.length()==6)
+			{
+				int rowCount=-1;
+				pk = data.getString(4);
+				pkValues = data.getJSONArray(5);
+				//判断该条记录是否存在
+				JSONArray selectData = new JSONArray();
+				JSONArray updateData = new JSONArray();
+				
+				selectData.put(dbName);
+				selectData.put(tableName);
+				selectData.put(new JSONArray().put(pk));
+				//selectData.put(pk+"=?");//where
+				selectData.put(pk + "  in (?)");//where
+
+				//				
+				updateData.put(dbName);
+				updateData.put(tableName);
+				//updateData.put(tableName);
+				
+				//ContentValues _pkvalue =null; 
+				JSONArray pkvalue = null;
+				
+				StringBuffer strbf_in = new StringBuffer();
+				 String str_in="";
+				String[] str_ins= null;
+				str_ins = new String[pkValues.length()];
+				for (int m = 0; m < pkValues.length(); m++) {
+				    String column = pkValues.getJSONArray(m).getString(0).toString();
+					column = "'"+column+"',";
+				    strbf_in.append(column);
+				    str_in = strbf_in.toString();
+				    str_in = str_in.substring(0, str_in.length()-1);
+				    
+				    str_ins[m] = column;
+				}
+				
+				selectData.put(str_in);
+				//
+				JSONArray  mresult  = query_having_in(selectData);
+				String str_update="";
+				if(mresult!=null && mresult.length()>0)
+				{
+					StringBuffer strbf_update= new StringBuffer();
+					for (int m = 0; m < mresult.length(); m++) {
+						pkvalue = pkValues.getJSONArray(m);
+						existsPkValuses.put(pkvalue);
+						
+						String _pkvalue = mresult.getJSONArray(m).getString(0).toString();
+						_pkvalue = "'" + _pkvalue + "',";
+						strbf_update.append(_pkvalue);
+					}
+					str_update = strbf_update.toString();
+					str_update = str_update.substring(0, str_update.length()-1);
+					
+					//更新时间
+					JSONObject obj = new JSONObject();
+					Date date = null;
+					SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
+					date = new Date();
+					String strTime = format.format(date);
+					obj.put("SyncTime", strTime);
+					
+					SQLiteDatabase _db = getDb(dbName);
+					String sql_update = "update " + tableName +" set SyncTime='"+ strTime +"' where  " +pk +" in("+str_update+")";
+					_db.execSQL(sql_update);
+
+//					updateData.put(obj);
+//					updateData.put(pk + "in(?)");
+//					updateData.put(str_update);
+//				    // int r =	_db.update(tableName, obj, whereClause, whereArgs);
+//					result = updateQuery(updateData);
+					Log.d("update >>>> ", "  2015-1-20 12:28:17");
+				}
+				
+				
+					
+//					// _pkvalue = new ContentValues();
+//					pkvalue = pkValues.getJSONArray(m);
+//					selectData.put(pkvalue);
+//					// Cursor cs = db.query(tableName, _columns, where,
+//					// _whereArgs, "", "", "", "");
+//					if (pk.length() > 0) {
+//						rowCount = query_having(selectData);
+//						//Log.i("select  result >>>> ", rowCount + "");
+//						if (rowCount > 0) {
+//							existsPkValuses.put(pkvalue);
+//							// update synctime
+//							Date date = null;
+//							SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
+//							date = new Date();
+//							String str = format.format(date);
+//							obj.put("SyncTime", str);
 //
-//#import <Foundation/Foundation.h>
+//							updateData.put(obj);
+//							updateData.put(pk + "=?");
+//							updateData.put(pkvalue);
 //
-//@interface SqlArg : NSObject
-//
-//@property (nonatomic, strong) NSString *dbname;
-//@property (nonatomic, strong) NSString *tbl;
-//@property (nonatomic, strong) NSString *columns;
-//@property (nonatomic, strong) NSMutableArray *values;
-//
-//@end
-//
-//
-////
-////  SqlArg.m
-////  Checkin
-////
-////  Created by smartconf on 14-11-4.
-////
-////
-//
-////#import "SqlArg.h"
-//
-//@implementation SqlArg
-//
-//@synthesize dbname;
-//@synthesize tbl;
-//@synthesize columns;
-//@synthesize values;
-//
-//@end
+//							result = updateQuery(updateData);
+//							//Log.d("update  synctime result >>>>> ", m+ " >>  "+ result.getMessage());
+//						}
+//					}
+					//Log.d("查询记录是否存在>>>>>","dddddsssss");
+			
+				//Log.d("查询记录是否存在>>>>>","dddd");
 
+			}
+			
+			long id = 0;
+			SQLiteDatabase db = getDb(dbName);
+			ContentValues _values = null;
+			JSONArray values_ = null;
+			for (int i = 0; i < values.length(); i++) {
+				values_ = values.getJSONArray(i);
+				_values = new ContentValues();
+				
+				boolean fflag = false;
+				for (int j = 0; j < values_.length(); j++) {
+					if(pk.length()>0)
+					{
+						if(existsPkValuses.length()>0)
+						{
+							//判断 pk 是否已存在, 若存在跳出本次循环
+							if(columns.getString(j).toLowerCase().equals(pk.toLowerCase()))
+							{
+								for(int n=0;n<existsPkValuses.length();n++)
+								{
+									//boolean flag = existsPkValuses.getJSONArray(n).getString(0).equals(values_.getString(j));
+									if(existsPkValuses.getJSONArray(n).getString(0).equals(values_.getString(j)));
+									{
+										fflag=true;
+										break;
+									}
+								}
+							}
+						}	
+					}
+					_values.put(columns.getString(j), values_.getString(j));
+				}
+				if(!fflag)
+				{
+					id = db.insert(tableName, null, _values);
+				}
+				//Log.d("i>>>>", i+"");
+			}
+			db.close();
+			if(id==0){
+				result = new PluginResult(PluginResult.Status.OK,
+						"Insert zero");
+			}else if (id == -1) {
+				result = new PluginResult(PluginResult.Status.ERROR,
+						"Insert error");
+			} else {
+				result = new PluginResult(PluginResult.Status.OK, id);
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+		Log.i("500  rows  times >>>>>", "xxxx");
+		return result;
+	}
 
+	private String getColumnStringByJsonArray(JSONArray columns)
+	{
+		String strColunm="";
+		String[] _whereArgs = null;
+		StringBuffer strbuf = new StringBuffer();
+		try {
+			if (columns != null) {
+				int vLen = columns.length();
+				_whereArgs = new String[vLen];
+				for (int i = 0; i < vLen; i++) {
+					String column = columns.getString(i).toString();
+					column = column+"=? and ";
+					strbuf.append(column);
+				}
+				strColunm = strbuf.toString();
+				strColunm = strColunm.substring(0, strColunm.length()-4);
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+			return strColunm;
+		}
+		return strColunm;
+	}
+	
+	public PluginResult batchRawQuery(JSONArray data) {
+		return batchRawQuery(data, false);
+	}
 
+	PluginResult batchRawQuery(JSONArray data, boolean transaction) {
+		PluginResult result = null;
+		SQLiteDatabase db = null;
+		try {
+			Log.e("PGSQLitePlugin", "batchRawQuery");
+			String dbName = data.getString(0);
+			db = getDb(dbName);
+			JSONArray batch = (JSONArray) data.get(1);
+			int len = batch.length();
+			if (transaction) {
+				db.beginTransaction();
+			}
+			for (int i = 0; i < len; i++) {
+				JSONObject el = (JSONObject) batch.get(i);
+				String type = el.getString("type");
+				JSONArray args = (JSONArray) el.get("opts");
+				int len1 = args.length();
+				JSONArray rData = new JSONArray();
+				rData.put(dbName);
+				for (int j = 0; j < len1; j++) {
+					rData.put(args.get(j));
+				}
 
+				Log.e("PGSQLitePlugin", "batchRawQuery::type=" + type);
 
-/*
- * Copyright (C) 2011-2014 ealing
- * Copyright (C) 2014 ealing
- *
- *
- *
- */
+				if (type.equals("raw")) {
+					result = rawQuery(rData);
+				} else if (type.equals("insert")) {
+					result = insertQuery(rData);
+				} else if (type.equals("del")) {
+					result = deleteQuery(rData);
+				} else if (type.equals("query")) {
+					result = query(rData);
+				} else if (type.equals("update")) {
+					result = updateQuery(rData);
+				}
+				if (result == null) {
+					result = new PluginResult(PluginResult.Status.ERROR,
+							"Unknow action");
+					if (transaction) {
+						db.endTransaction();
+					}
+					break;
+				} else if (result.getStatus() != 1) {
+					if (transaction) {
+						db.endTransaction();
+					}
+					result = new PluginResult(PluginResult.Status.ERROR,
+							result.getMessage());
+					break;
+				}
+			}
+			if (transaction) {
+				db.setTransactionSuccessful();
+				db.endTransaction();
+			}
+		} catch (Exception e) {
+			if (db != null && db.inTransaction()) {
+				db.endTransaction();
+			}
+			Log.e("PGSQLitePlugin", "error batch" + e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
 
-#import "DbHelper.h"
-#include <regex.h>
-#import "NSString+Extended.h"
-//#import "SqlArg.h"
+		return result;
+	}
 
+	public PluginResult rawQuery(JSONArray data) {
+		PluginResult result = null;
+		try {
+			String dbName = data.getString(0);
+			String sql = data.getString(1);
+			SQLiteDatabase db = getDb(dbName);
 
-//LIBB64
-typedef enum
-{
-    step_A, step_B, step_C
-} base64_encodestep;
+			Log.e("PGSQLitePlugin", "rawQuery action::sql=" + sql);
 
-typedef struct
-{
-    base64_encodestep step;
-    char result;
-    int stepcount;
-} base64_encodestate;
+			Cursor cs = db.rawQuery(sql, new String[] {});
+			JSONObject res = new JSONObject();
+			JSONArray rows = new JSONArray();
 
-static void base64_init_encodestate(base64_encodestate* state_in)
-{
-    state_in->step = step_A;
-    state_in->result = 0;
-    state_in->stepcount = 0;
+			if (cs != null && cs.moveToFirst()) {
+				String[] names = cs.getColumnNames();
+				int namesCoint = names.length;
+				do {
+					JSONObject row = new JSONObject();
+					for (int i = 0; i < namesCoint; i++) {
+						String name = names[i];
+						row.put(name, cs.getString(cs.getColumnIndex(name)));
+					}
+					rows.put(row);
+				} while (cs.moveToNext());
+				cs.close();
+			}
+			res.put("rows", rows);
+			Log.e("PGSQLitePlugin", "rawQuery action::count=" + rows.length());
+			result = new PluginResult(PluginResult.Status.OK, res);
+
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+		return result;
+	}
+
+	public PluginResult remove(JSONArray data) {
+		PluginResult result = null;
+		JSONObject ret = new JSONObject();
+		try {
+			Log.i("PGSQLitePlugin", "remove action");
+			ret.put("status", 1);
+			String dbName = data.getString(0);
+			File dbFile = null;
+			SQLiteDatabase db = getDb(dbName);
+			if (db != null) {
+				db.close();
+				openDbs.remove(dbName);
+			}
+
+			dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+			if (!dbFile.exists()) {
+
+				dbFile = ctx.getDatabasePath(dbName);
+				if (!dbFile.exists()) {
+					ret.put("message", "Database not exist");
+					ret.put("status", 0);
+					result = new PluginResult(PluginResult.Status.ERROR, ret);
+				} else {
+					if (dbFile.delete()) {
+						Log.i("PGSQLitePlugin",
+								"remove action::remove from internal");
+						result = new PluginResult(PluginResult.Status.OK);
+					} else {
+						ret.put("message", "Can't remove db");
+						ret.put("status", 2);
+						result = new PluginResult(PluginResult.Status.ERROR,
+								ret);
+					}
+				}
+			} else {
+				if (dbFile.delete()) {
+					result = new PluginResult(PluginResult.Status.OK);
+					Log.i("PGSQLitePlugin", "remove action::remove from sdcard");
+				} else {
+					ret.put("message", "Can't remove db");
+					ret.put("status", 2);
+					result = new PluginResult(PluginResult.Status.ERROR, ret);
+				}
+			}
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, ret);
+		}
+		return result;
+	}
+
+	@SuppressLint("SdCardPath")
+	private String path = "/data/data/";
+	private static final String USE_INTERNAL = "internal";
+	private static final String USE_EXTERNAL = "external";
+
+	@SuppressWarnings("deprecation")
+	public void openDatabese(JSONArray data) {
+		try {
+			String storage = PGSQLitePlugin.USE_INTERNAL;
+			// String storage = PGSQLitePlugin.USE_EXTERNAL;
+
+			String dbName = data.getString(0);
+			seDbName = dbName;
+			JSONObject options = getJSONObjectAt(data, 1);
+			if (options != null) {
+				storage = options.getString("storage");
+			}
+			if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)
+					&& !Environment.getExternalStorageState().equals(
+							Environment.MEDIA_MOUNTED)) {
+				// new PluginResult(PluginResult.Status.ERROR,
+				// "SDCard not mounted")
+				Log.e("sdcard  >>>>>> ", "SDCard not mounted");
+				return;
+			} else {
+				Log.e("sdcard  >>>>>> ", "SDCard mounted");
+
+			}
+			String _dbName = null;
+			SQLiteDatabase db = getDb(dbName);
+			File dbFile = null;
+			if (Environment.getExternalStorageState().equals(
+					Environment.MEDIA_MOUNTED)
+					&& !storage.equals(PGSQLitePlugin.USE_INTERNAL)) {
+
+				if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)) {
+					dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+					if (!dbFile.exists()) {
+						dbFile.mkdirs();
+					} else {
+						Log.d(">>>>>>>>>>>>>>>>>>>>", "db  已存在");
+					}
+
+				} else {
+					dbFile = ctx.getDatabasePath(dbName);
+					if (!dbFile.exists()) {
+						dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+
+						if (!dbFile.exists()) {
+							StatFs stat = new StatFs("/data/");
+							long blockSize = stat.getBlockSize();
+							long availableBlocks = stat.getBlockCount();
+							long size = blockSize * availableBlocks;
+							if (size >= 1024 * 1024 * 1024) {
+								dbFile = ctx.getDatabasePath(dbName);
+							} else {
+								dbFile = new File(
+										ctx.getExternalFilesDir(null), dbName);
+							}
+							Log.i("blockSize * availableBlocks",
+									Long.toString(size));
+						}
+					}
+				}
+			} else {
+				dbFile = ctx.getDatabasePath(dbName);
+
+				File file = null;
+				file = Environment.getDataDirectory();
+				//Log.e("file  path >>>> ","getDataDirectory()=" + file.getPath());
+				String appDataPath = file.getAbsolutePath();
+				// 获取当前程序路径
+				String ss = ctx.getFilesDir().getAbsolutePath();
+				// 获取该程序的安装包路径
+				String path = ctx.getPackageResourcePath();
+
+				// 获取程序默认数据库路径
+				//ctx.getDatabasePath(ss).getAbsolutePath();
+				//String mpath = ctx.getFilesDir().getAbsolutePath() + "/"+ dbName; 
+				// data/data目录
+				String dbpath = ctx.getDatabasePath(dbName).getAbsolutePath();
+				String dbDirPath = "/data/data/" + ctx.getPackageName()+"/databases";
+				File dbDir = new File(dbDirPath);
+				if (!dbDir.exists()) {
+					dbDir.mkdir();
+				}
+				//File mfile = new File(dbpath);
+				File dbf = new File(dbpath);
+				if (dbf.exists()) {
+					// dbf.delete();
+					// return;
+					Log.d("=====================", "db  文件已存在");
+				} else {
+					Log.d("=====================", "db  文件不存在,拷贝asset/www/db文件");
+					final String[] sample_dbName = { dbName };
+					int assetDbSize = sample_dbName.length;
+					//File databaseFile = new File("/data/data/com.simpleevent.checkin/databases/");
+					// check if databases folder exists, if not create one and its
+					// subfolders
+					
+//					if (!databaseFile.exists()) {
+//						databaseFile.mkdir();
+//					}
+					for (int i = 0; i < assetDbSize; i++) {
+						String outFilename = null;
+						//outFilename = "/data/data/com.simpleevent.checkin/databases/" + dbName;
+						outFilename = dbpath;
+						File _dbfile = new File(outFilename);
+						try {
+							InputStream in = ctx.getAssets().open("www/" + dbName);
+							OutputStream out = new FileOutputStream(outFilename);
+							// Transfer bytes from the sample input file to the
+							// sample output file
+							byte[] buf = new byte[1024];
+							int len;
+							while ((len = in.read(buf)) > 0) {
+								out.write(buf, 0, len);
+							}
+							out.flush();
+							// Close the streams
+							out.close();
+							in.close();
+						} catch (Exception e) {
+							Log.e("PGSQLitePlugin",
+									"error get db from assets=" + e.getMessage());
+						}
+					}
+				}
+			}
+
+			_dbName = dbFile.getPath();
+			int status = 0;
+			if (db == null) {
+				if (!dbFile.exists()) {
+					status = 1;
+					
+					String dbpath = ctx.getDatabasePath(dbName).getAbsolutePath();
+					String dbDirPath = "/data/data/" + ctx.getPackageName()+"/databases";
+					File dbDir = new File(dbDirPath);
+					if (!dbDir.exists()) {
+						dbDir.mkdir();
+					}
+					File dbf = new File(dbpath);
+					final String[] sample_dbName = { dbName };
+					int assetDbSize = sample_dbName.length;
+				
+					for (int i = 0; i < assetDbSize; i++) {
+						String outFilename = null;
+						outFilename = dbpath;
+						File sampleFile = new File(outFilename);
+						try {
+							InputStream in = ctx.getAssets().open("www/" + dbName);
+							OutputStream out = new FileOutputStream(outFilename);
+							// Transfer bytes from the sample input file to the
+							// sample output file
+							byte[] buf = new byte[1024];
+							int len;
+							while ((len = in.read(buf)) > 0) {
+								out.write(buf, 0, len);
+							}
+							out.flush();
+							// Close the streams
+							out.close();
+							in.close();
+							status = 2;
+						} catch (Exception e) {
+							Log.e("PGSQLitePlugin",
+									"error get db from assets=" + e.getMessage());
+						}
+					}
+				}
+				db = SQLiteDatabase.openDatabase(_dbName, null,
+						SQLiteDatabase.CREATE_IF_NECESSARY);
+				openDbs.put(dbName, db);
+			}
+
+			// copyFile(dbName, path + ctx.getPackageName() + "/databases/"
+			// + dbName);
+			// File dbfile = ctx.getDatabasePath(dbName);
+			// SQLiteDatabase mydb = SQLiteDatabase.openOrCreateDatabase(dbfile,
+			// null);
+			// openDbs.put(dbName, mydb);
+		} catch (Exception e) {
+			System.err.println(e);
+		}
+	}
+
+	@SuppressWarnings("deprecation")
+	public boolean reOpenDatabese(JSONArray data) {
+		boolean result = false;
+		try {
+			String storage = PGSQLitePlugin.USE_INTERNAL;
+			String dbName = data.getString(0);
+			seDbName = dbName;
+			JSONObject options = getJSONObjectAt(data, 1);
+			if (options != null) {
+				storage = options.getString("storage");
+			}
+			if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)
+					&& !Environment.getExternalStorageState().equals(
+							Environment.MEDIA_MOUNTED)) {
+				// new PluginResult(PluginResult.Status.ERROR,
+				// "SDCard not mounted")
+				return false;
+			}
+			String _dbName = null;
+			SQLiteDatabase db = getDb(dbName);
+			File dbFile = null;
+			if (Environment.getExternalStorageState().equals(
+					Environment.MEDIA_MOUNTED)
+					&& !storage.equals(PGSQLitePlugin.USE_INTERNAL)) {
+				if (storage.equals(PGSQLitePlugin.USE_EXTERNAL)) {
+					dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+					if (!dbFile.exists()) {
+						dbFile.mkdirs();
+					}
+				} else {
+					dbFile = ctx.getDatabasePath(dbName);
+					if (!dbFile.exists()) {
+						dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+
+						if (!dbFile.exists()) {
+							StatFs stat = new StatFs("/data/");
+							long blockSize = stat.getBlockSize();
+							long availableBlocks = stat.getBlockCount();
+							long size = blockSize * availableBlocks;
+							if (size >= 1024 * 1024 * 1024) {
+								dbFile = ctx.getDatabasePath(dbName);
+							} else {
+								dbFile = new File(
+										ctx.getExternalFilesDir(null), dbName);
+							}
+							Log.i("blockSize * availableBlocks",
+									Long.toString(size));
+						}
+					}
+				}
+			} else {
+				dbFile = ctx.getDatabasePath(dbName);
+
+				if (!dbFile.exists()) {
+					dbFile = new File(ctx.getExternalFilesDir(null), dbName);
+
+					if (!dbFile.exists()) {
+						StatFs stat = new StatFs("/data/");
+						long blockSize = stat.getBlockSize();
+						long availableBlocks = stat.getBlockCount();
+						long size = blockSize * availableBlocks;
+						if (size >= 1024 * 1024 * 1024) {
+							dbFile = ctx.getDatabasePath(dbName);
+						} else {
+							dbFile = new File(ctx.getExternalFilesDir(null),
+									dbName);
+						}
+						Log.i("blockSize * availableBlocks",
+								Long.toString(size));
+					}
+				}
+			}
+			_dbName = dbFile.getPath();
+			int status = 0;
+			if (db == null) {
+				if (!dbFile.exists()) {
+					status = 1;
+					try {
+						InputStream assetsDB = this.ctx.getAssets().open(
+								"www/" + dbName);
+						OutputStream dbOut = new FileOutputStream(_dbName);
+						byte[] buffer = new byte[1024];
+						int length;
+						while ((length = assetsDB.read(buffer)) > 0) {
+							dbOut.write(buffer, 0, length);
+						}
+						dbOut.flush();
+						dbOut.close();
+						assetsDB.close();
+						status = 2;
+						result = true;
+					} catch (Exception e) {
+						Log.e("PGSQLitePlugin",
+								"error get db from assets=" + e.getMessage());
+						return false;
+					}
+				} else {
+
+					deleteFile(dbFile);// TODO
+					status = 1;
+					try {
+						InputStream assetsDB = this.ctx.getAssets().open(
+								"www/" + dbName);
+						OutputStream dbOut = new FileOutputStream(_dbName);
+						byte[] buffer = new byte[1024];
+						int length;
+						while ((length = assetsDB.read(buffer)) > 0) {
+							dbOut.write(buffer, 0, length);
+						}
+						dbOut.flush();
+						dbOut.close();
+						assetsDB.close();
+						status = 2;
+						result = true;
+					} catch (Exception e) {
+						Log.e("PGSQLitePlugin",
+								"error get db from assets=" + e.getMessage());
+						result = false;
+					}
+				}
+				db = SQLiteDatabase.openDatabase(_dbName, null,
+						SQLiteDatabase.CREATE_IF_NECESSARY);
+				openDbs.put(dbName, db);
+			}
+
+			// copyFile(dbName, path + ctx.getPackageName() + "/databases/"
+			// + dbName);
+			// File dbfile = ctx.getDatabasePath(dbName);
+			// SQLiteDatabase mydb = SQLiteDatabase.openOrCreateDatabase(dbfile,
+			// null);
+			// openDbs.put(dbName, mydb);
+		} catch (Exception e) {
+			System.err.println(e);
+			return false;
+		}
+		return result;
+	}
+
+	public static void deleteFile(File file) {
+		String sdState = Environment.getExternalStorageState();
+		if (sdState.equals(Environment.MEDIA_MOUNTED)) {
+			if (file.exists()) {
+				if (file.isFile()) {
+					file.delete();
+				} else if (file.isDirectory()) {// 如果它是一个目录
+					// 声明目录下所有的文件 files[];
+					File files[] = file.listFiles();
+					for (int i = 0; i < files.length; i++) { // 遍历目录下所有的文件
+						deleteFile(files[i]); // 把每个文件 用这个方法进行迭代
+					}
+				}
+				file.delete();
+			}
+		}
+	}
+
+	public PluginResult closeDatabese(JSONArray data) {
+		PluginResult result = null;
+		try {
+			Log.e("PGSQLitePlugin", "close action");
+			String dbName = data.getString(0);
+			SQLiteDatabase db = getDb(dbName);
+			if (db != null) {
+				db.close();
+				openDbs.remove(dbName);
+			}
+			result = new PluginResult(PluginResult.Status.OK);
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			result = new PluginResult(PluginResult.Status.ERROR, e.getMessage());
+		}
+
+		return result;
+	}
+
+	public void closeDatabeseSE(JSONArray data) {
+		// PluginResult result = null;
+		try {
+			Log.e("PGSQLitePlugin", "close action");
+			String dbName = data.getString(0);
+			SQLiteDatabase db = getDb(dbName);
+			if (db != null) {
+				db.close();
+				openDbs.remove(dbName);
+			}
+			// result = new PluginResult(PluginResult.Status.OK);
+			Log.v("closeDatabeseSE >> ", "OK");
+		} catch (Exception e) {
+			Log.e("PGSQLitePlugin", e.getMessage());
+			// result = new PluginResult(PluginResult.Status.ERROR,
+			// e.getMessage());
+			Log.v("closeDatabeseSE >> ", "ERROR");
+		}
+
+		// return result;
+	}
+
+	/**
+	 * 
+	 * @param oldPath
+	 *            String 源路径c:/fqf.txt
+	 * @param newPath
+	 *            String 目标路径f:/fqf.txt
+	 */
+	public void copyFile(String oldPath, String newPath) {
+		try {
+			int bytesum = 0;
+			int byteread = 0;
+			InputStream inStream = ctx.getResources().getAssets().open(oldPath);
+			FileOutputStream fs = new FileOutputStream(newPath);
+			byte[] buffer = new byte[1444];
+			while ((byteread = inStream.read(buffer)) != -1) {
+				bytesum += byteread; // 
+				System.out.println(bytesum);
+				fs.write(buffer, 0, byteread);
+			}
+			fs.flush();
+			fs.close();
+			inStream.close();
+		} catch (Exception e) {
+			System.out.println("copyFile" + e.toString());
+			e.printStackTrace();
+
+		}
+
+	}
 }
-
-static char base64_encode_value(char value_in)
-{
-    static const char* encoding = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    if (value_in > 63) return '=';
-    return encoding[(int)value_in];
-}
-
-static int base64_encode_block(const char* plaintext_in,
-                               int length_in,
-                               char* code_out,
-                               base64_encodestate* state_in,
-                               int line_length)
-{
-    const char* plainchar = plaintext_in;
-    const char* const plaintextend = plaintext_in + length_in;
-    char* codechar = code_out;
-    char result;
-    char fragment;
-    
-    result = state_in->result;
-    
-    switch (state_in->step)
-    {
-            while (1)
-            {
-            case step_A:
-                if (plainchar == plaintextend)
-                {
-                    state_in->result = result;
-                    state_in->step = step_A;
-                    return codechar - code_out;
-                }
-                fragment = *plainchar++;
-                result = (fragment & 0x0fc) >> 2;
-                *codechar++ = base64_encode_value(result);
-                result = (fragment & 0x003) << 4;
-            case step_B:
-                if (plainchar == plaintextend)
-                {
-                    state_in->result = result;
-                    state_in->step = step_B;
-                    return codechar - code_out;
-                }
-                fragment = *plainchar++;
-                result |= (fragment & 0x0f0) >> 4;
-                *codechar++ = base64_encode_value(result);
-                result = (fragment & 0x00f) << 2;
-            case step_C:
-                if (plainchar == plaintextend)
-                {
-                    state_in->result = result;
-                    state_in->step = step_C;
-                    return codechar - code_out;
-                }
-                fragment = *plainchar++;
-                result |= (fragment & 0x0c0) >> 6;
-                *codechar++ = base64_encode_value(result);
-                result  = (fragment & 0x03f) >> 0;
-                *codechar++ = base64_encode_value(result);
-                
-                if(line_length > 0)
-                {
-                    ++(state_in->stepcount);
-                    if (state_in->stepcount == line_length/4)
-                    {
-                        *codechar++ = '\n';
-                        state_in->stepcount = 0;
-                    }
-                }
-            }
-    }
-    /* control should not reach here */
-    return codechar - code_out;
-}
-
-static int base64_encode_blockend(char* code_out,
-                                  base64_encodestate* state_in)
-{
-    char* codechar = code_out;
-    
-    switch (state_in->step)
-    {
-        case step_B:
-            *codechar++ = base64_encode_value(state_in->result);
-            *codechar++ = '=';
-            *codechar++ = '=';
-            break;
-        case step_C:
-            *codechar++ = base64_encode_value(state_in->result);
-            *codechar++ = '=';
-            break;
-        case step_A:
-            break;
-    }
-    *codechar++ = '\n';
-    
-    return codechar - code_out;
-}
-
-//LIBB64---END
-
-static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** values) {
-    int ret;
-    regex_t regex;
-    char* reg = (char*)sqlite3_value_text(values[0]);
-    char* text = (char*)sqlite3_value_text(values[1]);
-    
-    if ( argc != 2 || reg == 0 || text == 0) {
-        sqlite3_result_error(context, "SQL function regexp() called with invalid arguments.\n", -1);
-        return;
-    }
-    
-    ret = regcomp(&regex, reg, REG_EXTENDED | REG_NOSUB);
-    if ( ret != 0 ) {
-        sqlite3_result_error(context, "error compiling regular expression", -1);
-        return;
-    }
-    
-    ret = regexec(&regex, text , 0, NULL, 0);
-    regfree(&regex);
-    
-    sqlite3_result_int(context, (ret != REG_NOMATCH));
-}
-
-
-
-
-@implementation DbHelper
-
-@synthesize openDBs;
-@synthesize appDocsPath;
-@synthesize seDbPath;
-@synthesize _dbName;
-
--(CDVPlugin*) initWithWebView:(UIWebView*)theWebView
-{
-    self = (DbHelper*)[super initWithWebView:theWebView];
-    if (self) {
-        openDBs = [NSMutableDictionary dictionaryWithCapacity:0];
-#if !__has_feature(objc_arc)
-        [openDBs retain];
-#endif
-        
-        NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex: 0];
-        NSLog(@"Detected docs path: %@", docs);
-        [self setAppDocsPath:docs];
-    }
-    
-    return self;
-}
-
-
-//========================================
-#pragma custom code
-
-- (void) copyDatabase:(id)dbPath{
-    
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSError *error;
-    //NSString *dbPath = [self getDBPath];
-    BOOL success = [fileManager fileExistsAtPath:dbPath];
-    if(!success) {
-        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        //defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
-        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
-        if (!success)
-            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
-    }
-}
-
-- (Boolean) reCopyDatabase:(id)dbPath{
-    
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSError *error;
-    //NSString *dbPath = [self getDBPath];
-    BOOL success = [fileManager fileExistsAtPath:dbPath];
-    Boolean flag=false;
-    if(!success) {
-        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        //defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
-        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
-        if (!success)
-        {
-            flag=false;
-            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
-        }else
-        {
-            flag=true;
-        }
-    }else{
-        //先删除，再重新拷贝
-        success= [fileManager removeItemAtPath:dbPath error:&error];
-        
-        NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
-        //defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
-        defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
-        success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
-        if (!success)
-        {
-            flag=false;
-            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
-        }else
-        {
-            flag=true;
-        }
-    }
-    return flag;
-}
-
-/*
- //test
- - (CDVPluginResult*)get:(CDVInvokedUrlCommand*)command
- {
- CDVPluginResult *pluginResult = nil;
- [self open:command];
- 
- 
- //NSString *echo = [command.arguments objectAtIndex:0];
- DataManager *dm = [DataManager sharedManager];
- //database copy
- [dm open:command];
- NSMutableDictionary *options = [command.arguments objectAtIndex:0];
- pluginResult = [dm executeSqlWithDictSE: options];
- //pluginResult = [dm query:command];
- 
- NSLog(@"here");
- NSMutableArray *array = [pluginResult.message objectForKey:@"rows"];
- NSString *strvalue = [[array objectAtIndex:0] objectForKey:@"UserId"];
- //return [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
- NSMutableDictionary *resultSet = [[NSMutableDictionary alloc] init];
- [resultSet setObject:@"userid" forKey:@"rows"];
- [resultSet setObject:@"1" forKey:@"rowsAffected"];
- 
- return [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultSet];
- echo = @"调用原生方法返回数据成功";
- 
- NSMutableArray *array = [[NSMutableArray alloc] init];
- [array addObject:echo];
- [array addObject:@"001"];
- [array addObject:@"007"];
- 
- if (echo != nil && [echo length] > 0) {
- //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:echo];
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:array];
- 
- } else {
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
- }
- [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
- 
- }
- */
-
-- (void)put:(CDVInvokedUrlCommand*)command
-{
-    [self open:command];
-    [self backgroundExecuteSqlBatch:command];
-    
-}
-
-- (NSString*)insertSE:(NSMutableArray*)options
-{
-    //NSMutableString *sql = [NSMutableString string];
-    NSString *tbName = [NSString string];
-    NSString *dbName = [NSString string];
-    NSMutableArray *columns = [NSMutableArray array];
-    NSMutableArray *whereArgs = [NSMutableArray array];
-    
-    tbName = [options objectAtIndex:1];
-    dbName = [options objectAtIndex:0];
-    columns = [options objectAtIndex:2];
-    //where = [options objectAtIndex:3];
-    whereArgs = [options objectAtIndex:3];
-    
-    NSString *sql = [NSString string];
-    
-    NSString *cursql = [NSString string];
-    
-    sql = [@"INSERT INTO " stringByAppendingFormat:@" %@ (",tbName];
-    
-    if (columns && [columns count]>0) {
-        for (int i=0;i<[columns count];i++) {
-            NSString *strcol = [columns objectAtIndex:i];
-            sql = [sql stringByAppendingFormat:@"%@,",strcol];
-        }
-        sql = [sql substringToIndex:[sql length]-1];
-    }
-    
-    sql = [sql stringByAppendingString:@") VALUES ("];
-    
-    cursql = sql;
-    
-    if (columns && [columns count]>0) {
-        for (int i=0;i<[columns count];i++) {
-            sql = [sql stringByAppendingFormat:@"%@,",@"?"];
-        }
-        sql = [sql substringToIndex:[sql length]-1];
-    }
-    sql = [sql stringByAppendingString:@")"];
-    
-    if (whereArgs && [whereArgs count]>0) {
-        for (int i=0;i<[whereArgs count];i++) {
-            cursql = [cursql stringByAppendingFormat:@"'%@',",[whereArgs objectAtIndex:i]];
-        }
-        cursql = [cursql substringToIndex:[cursql length]-1];
-    }
-    cursql = [cursql stringByAppendingString:@")"];
-
-    //NSLog(@"cursql >>>  %@",cursql);
-    
-    /*
-     var aSql = [];
-     var sql = "INSERT INTO " + table + " (";
-     var sql1 = "(";
-     for (var i in values){
-     sql1 += " ?,";
-     sql += i + ",";
-     aSql.push( values[i] );
-     }
-     sql = sql.substring(0, sql.length - 1) + ") VALUES ";
-     sql1 = sql1.substring(0, sql1.length - 1) + ")";
-     sql += sql1;
-     aSql.unshift(sql);
-     if (compile == true){
-     return aSql
-     }
-     else{
-     this.executeSql(aSql, function(res){ if (success)success(res.insertId); }, error);
-     }*/
-    
-    return sql;
-}
-
-- (NSString*)updateSE:(NSMutableArray*)options
-{
-    /*
-     var sql = "UPDATE " + table + " SET ";
-     var aSql = [];
-     for (var i in values){
-     sql += i + " = ? ,";
-     aSql.push( values[i] );
-     }
-     sql = sql.substring(0, sql.length - 1) + " ";
-     if (where){
-     sql += " WHERE " +  where;
-     }
-     if (whereArgs instanceof Array){
-     aSql = aSql.concat(whereArgs);
-     }
-     aSql.unshift(sql);
-     if (compile == true){
-     return aSql;
-     }
-     else{
-     this.executeSql(aSql, function(res){if (success)success(res.rowsAffected); }, error);
-     }
-     */
-    
-    NSString *tbName = [NSString string];
-    NSString *dbName = [NSString string];
-    NSMutableArray *columnsValues = [NSMutableArray array];
-    NSString *where = [NSString string];
-    NSMutableArray *whereArgs = [NSMutableArray array];
-    dbName = [options objectAtIndex:0];
-    tbName = [options objectAtIndex:1];
-    columnsValues = [options objectAtIndex:2];
-    where = [options objectAtIndex:3];
-    whereArgs = [options objectAtIndex:4];
-    NSMutableArray *_whereArgs = [NSMutableArray array];
-    //    NSLog(@"col value  %@ >>>",[columnsValues description]);
-    NSString *sql = [NSString string];
-    sql = [@"UPDATE " stringByAppendingFormat:@" %@  SET ",tbName];
-    /*
-     // NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
-     
-     if (columnsValues && [columnsValues count]) {
-     //得到词典中所有KEY值
-     NSEnumerator * enumeratorKey = [columnsValues keyEnumerator];
-     //快速枚举遍历所有KEY的值
-     for (NSObject *object in enumeratorKey) {
-     //NSLog(@"遍历KEY的值: %@",object);
-     
-     NSString *strcol = [NSString stringWithFormat:@"%@",object];
-     sql = [sql stringByAppendingFormat:@"%@ =?,",strcol];
-     [_whereArgs addObject:[columnsValues objectForKey:@"strcol"]];
-     }
-     
-     //得到词典中所有Value值
-     NSEnumerator * enumeratorValue = [columnsValues objectEnumerator];
-     
-     //快速枚举遍历所有Value的值
-     for (NSObject *object in enumeratorValue) {
-     NSLog(@"遍历Value的值: %@",object);
-     [_whereArgs addObject:[NSString stringWithFormat:@"%@",object]];
-     }
-     //通过KEY找到value
-     NSObject *object = [columnsValues objectForKey:@"name"];
-     
-     if (object != nil) {
-     NSLog(@"通过KEY找到的value是: %@",object);
-     }
-     }*/
-    
-    if (columnsValues && [columnsValues count]>0) {
-        for (int i=0;i<[columnsValues count];i++) {
-            //id obj = [columnsValues objectAtIndex:i];
-            //NSLog(@"col value  %@ >>>",[obj description]);
-            NSString *strcol = [columnsValues objectAtIndex:i];
-            sql = [sql stringByAppendingFormat:@"%@ =?,",strcol];
-        }
-        sql = [sql substringToIndex:[sql length]-1];
-    }
-    if (where) {
-        if(whereArgs && [whereArgs count]>0)
-        {
-            sql =[sql stringByAppendingFormat:@"  WHERE  %@", where];
-            
-            for (int j=0; j<[whereArgs count]; j++) {
-                [_whereArgs addObject:[whereArgs objectAtIndex:j]];
-            }
-        }
-    }
-    return sql;
-}
-
-
-- (NSString*)deleteSE:(NSMutableArray*)options
-{
-    /*
-     var sql = "DELETE FROM " + table;
-     if (where){
-     sql += " WHERE " + where;
-     }
-     var aSql = [];
-     aSql.push(sql);
-     if (whereArgs){
-     aSql = aSql.concat(whereArgs);
-     }
-     if (compile == true){
-     return aSql;
-     }
-     else{
-     this.executeSql(aSql, function(res){if (success)success(res.rowsAffected); }, error);
-     }
-     */
-    
-    NSString *tbName = [NSString string];
-    NSString *dbName = [NSString string];
-    //NSMutableArray *columns = [NSMutableArray array];
-    NSString *where = [NSString string];
-    NSMutableArray *whereArgs = [NSMutableArray array];
-    dbName = [options objectAtIndex:0];
-    
-    tbName = [options objectAtIndex:1];
-    //columns = [options objectAtIndex:2];
-    where = [options objectAtIndex:2];
-    whereArgs = [options objectAtIndex:3];
-    
-    NSString *sql = [NSString string];
-    sql = [@"DELETE FROM " stringByAppendingFormat:@" %@  ",tbName];
-    
-    if (where) {
-        if(whereArgs && [whereArgs count]>0)
-        {
-            sql =[sql stringByAppendingFormat:@" WHERE  %@", where];
-        }
-    }
-    
-    return sql;
-}
-
-
-- (NSString*)selectSE:(NSMutableArray*)options
-{
-    // NSMutableArray *options = [command.arguments objectAtIndex:0];
-    NSString *dbName = [options objectAtIndex:0];
-    NSString *tbName = [options objectAtIndex:1];
-    NSMutableArray *columns = [NSMutableArray array];
-    
-    
-    columns = [options objectAtIndex:2];
-    NSString *where = [options objectAtIndex:3];
-    NSMutableArray *whereArgs = [options objectAtIndex:4];
-    NSString *groupBy = [options objectAtIndex:5];
-    NSString *having = [options objectAtIndex:6];
-    NSString *orderBy = [options objectAtIndex:7];
-    NSString *limit = [options objectAtIndex:8];
-    /*
-     (table, columns, where, whereArgs, groupBy, having, orderBy, limit, success, error, compile) {
-     var sql = "SELECT ";
-     var aSql = [];
-     if (columns){
-     for (var i in columns){
-     sql += columns[i] + ",";
-     }
-     sql = sql.substring(0, sql.length - 1);
-     }
-     else {
-     sql += " * ";
-     }
-     sql += " FROM " + table + " ";
-     if (where){
-     if (whereArgs instanceof Array){
-     aSql = aSql.concat(whereArgs);
-     }
-     sql += " WHERE " + where;
-     }
-     if (groupBy){
-     sql += " GROUP BY " + groupBy + " ";
-     }
-     if (having){
-     sql += " HAVING " + having + " ";
-     }
-     if (orderBy){
-     sql += " ORDER BY " + orderBy + " ";
-     }
-     if (limit){
-     sql += " LIMIT " + limit + " ";
-     }
-     aSql.unshift(sql);
-     if (compile == true){
-     return aSql;
-     }
-     else{
-     this.executeSql(aSql, success, error);
-     }
-     */
-    
-    NSString *sql = [NSString stringWithFormat:@"SELECT "];
-    if (columns && [columns count]>0) {
-        for (int i=0;i<[columns count];i++) {
-            //sql = [sql stringByAppendingFormat:@""];
-            //sql =[sql stringWithFormat:@"%@" ,[columns objectAtIndex:i]];
-            NSString *strcol = [columns objectAtIndex:i];
-            sql = [sql stringByAppendingFormat:@"%@,",strcol];
-        }
-        sql = [sql substringToIndex:[sql length]-1];
-        
-    }else
-    {
-        sql = [sql stringByAppendingFormat:@" %@ ",@"*"];
-    }
-    
-    if (tbName && [tbName length]) {
-        sql = [sql stringByAppendingFormat:@" FROM %@ ",tbName];
-    }
-    
-    if (where){
-        
-        if(whereArgs && [whereArgs count]>0)
-        {
-            sql =[sql stringByAppendingFormat:@" WHERE  %@", where];
-        }
-    }
-    if (groupBy && [groupBy length]>0){
-        
-        sql =[sql stringByAppendingFormat:@" GROUP BY  %@", groupBy];
-    }
-    if (having && [having length]>0){
-        sql =[sql stringByAppendingFormat:@" HAVING  %@", having];
-    }
-    if (orderBy && [orderBy length]>0){
-        sql =[sql stringByAppendingFormat:@" ORDER BY  %@", orderBy];
-    }
-    if (limit && [limit length]>0){
-        sql =[sql stringByAppendingFormat:@" LIMIT  %@", limit];
-    }
-    return sql;
-}
-
-- (void)resetdb:(CDVInvokedUrlCommand*)command
-{
-    NSLog(@"resetdb");
-    CDVPluginResult* pluginResult = nil;
-    NSMutableArray *options = [command.arguments objectAtIndex:0];
-    NSString *dbname = [options objectAtIndex:0];
-    NSString *dbPath = [self databaseFullPath:dbname];
-    databasePath = [NSString stringWithFormat:@"%@",dbPath];
-    Boolean result = [self reCopyDatabase:dbPath];
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:result];
-    
-    [self closeSE:seDbPath];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
-}
-
-
-
-#pragma custom code
-//====================================================================
-
-/*
- + (id)sharedManager{
- //
- static id sharedManager = nil;
- if(sharedManager == nil){
- sharedManager = [[self alloc] init];
- }
- return sharedManager;
- //
- }
- - (id)init{
- if (self = [super init]) {
- //opQueue = [[NSOperationQueue alloc] init];
- //[self prepareDatabase];
- 
- //self = (DbHelper*)[super initWithWebView:theWebView];
- if (self) {
- openDBs = [NSMutableDictionary dictionaryWithCapacity:0];
- #if !__has_feature(objc_arc)
- [openDBs retain];
- #endif
- 
- NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex: 0];
- NSLog(@"Detected docs path: %@", docs);
- [self setAppDocsPath:docs];
- }
- }
- return self;
- }
- */
-
-+(NSMutableDictionary *) objectFromJSONString:(NSString *)jsonString
-{
-    NSMutableDictionary *jsonDic= [[NSMutableDictionary alloc] init];
-    NSError *error = nil;
-    NSData *jsonData = [jsonString dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];
-    
-    if (jsonData) {
-        jsonDic = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingMutableLeaves error:&error];
-    }
-    return jsonDic;
-}
-
-
-#pragma mark Database Method
-
-/*
- - (void) copyDatabase:(id)dbPath{
- 
- NSFileManager *fileManager = [NSFileManager defaultManager];
- NSError *error;
- 
- //NSString *dbPath = [self getDBPath];
- 
- BOOL success = [fileManager fileExistsAtPath:dbPath];
- 
- if(!success) {
- 
- NSString *defaultDBPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"www/"];
- 
- defaultDBPath = [defaultDBPath stringByAppendingPathComponent:@"smartevent.db"];
- 
- success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
- 
- if (!success)
- NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
- }
- }
- 
- - (NSString *) getDBPath
- {
- 
- NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory , NSUserDomainMask, YES);
- NSString *documentsDir = [paths objectAtIndex:0];
- return [documentsDir stringByAppendingPathComponent:@"DummyDB"];
- }
- */
-
-- (NSString *)databaseFullPath:(id)dbFile{
-    
-    if (dbFile == NULL) {
-        return NULL;
-    }
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSString *_databaseFullPath = [documentsDirectory stringByAppendingPathComponent:dbFile];
-    return _databaseFullPath;
-}
-
-#pragma custom code
-
-- (void)get:(CDVInvokedUrlCommand*)command
-{
-    
-    NSLog(@"get");
-    [self open:command];
-    [self backgroundExecuteSqlBatch:command];
-}
-
-- (void)post:(CDVInvokedUrlCommand*)command
-{
-    NSLog(@"post");
-    [self open:command];
-    [self backgroundExecuteSqlBatch:command];
-}
-
-- (void)postArray:(CDVInvokedUrlCommand*)command
-{
-    NSLog(@"postArray");
-    
-    [self openCustom:[[command.arguments objectAtIndex:0] objectAtIndex:0]];
-    
-    [self backgroundExecuteSqlBatch:command];
-}
-
--(void) delete: (CDVInvokedUrlCommand*)command
-{
-    NSLog(@"delete");
-    [self openCustom:[[command.arguments objectAtIndex:0] objectAtIndex:0]];
-    
-    //[self open:command];
-    [self backgroundExecuteSqlBatch:command];
-}
-
--(void) deleteArray: (CDVInvokedUrlCommand*)command
-{
-    NSLog(@"deleteArray");
-    [self openCustom:[[command.arguments objectAtIndex:0] objectAtIndex:0]];
-    [self backgroundExecuteSqlBatch:command];
-}
-
-#pragma custom code
-
-
--(id) getDBPath:(id)dbFile {
-    if (dbFile == NULL) {
-        return NULL;
-    }
-    NSString *dbPath = [NSString stringWithFormat:@"%@/%@", appDocsPath, dbFile];
-    return dbPath;
-}
-
--(void)open: (CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    
-    NSMutableArray *options = [command.arguments objectAtIndex:0];
-    
-    //NSString *dbname = [self getDBPath:[options objectForKey:@"name"]];
-    //========custom code===========================
-    //NSString *dbname = [options objectForKey:@"dbName"];
-    _dbName = [options objectAtIndex:0];
-    NSString *dbPath = [self databaseFullPath:_dbName];
-    databasePath = [NSString stringWithFormat:@"%@",dbPath];
-    [self copyDatabase:dbPath];
-    
-    seDbPath = [NSString stringWithFormat:@"%@",dbPath];
-    /*
-     int n = sqlite3_open([databasePath UTF8String], &database);
-     if (n!=SQLITE_OK) {
-     NSLog(@"数据库打开出错...");
-     return;
-     }else
-     {
-     NSLog(@"数据库打开成功...");
-     }*/
-    
-    NSValue *dbPointer;
-    
-    if (dbPath == NULL) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"You must specify database name"];
-    }
-    else {
-        dbPointer = [openDBs objectForKey:dbPath];
-        if (dbPointer != NULL) {
-            // NSLog(@"Reusing existing database connection");
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Database opened"];
-        }
-        else {
-            const char *name = [dbPath UTF8String];
-            // NSLog(@"using db name: %@", dbname);
-            sqlite3 *db;
-            
-            if (sqlite3_open(name, &db) != SQLITE_OK) {
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to open DB"];
-                return;
-            }
-            else {
-                // Extra for SQLCipher:
-                // const char *key = [@"your_key_here" UTF8String];
-                // if(key != NULL) sqlite3_key(db, key, strlen(key));
-                sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL, &sqlite_regexp, NULL, NULL);
-                
-                // Attempt to read the SQLite master table (test for SQLCipher version):
-                if(sqlite3_exec(db, (const char*)"SELECT count(*) FROM sqlite_master;", NULL, NULL, NULL) == SQLITE_OK) {
-                    dbPointer = [NSValue valueWithPointer:db];
-                    [openDBs setObject: dbPointer forKey: dbPath];
-                    
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Database opened"];
-                    
-                } else {
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to encrypt DB"];
-                }
-            }
-        }
-    }
-    if (sqlite3_threadsafe()) {
-        NSLog(@"Good news: SQLite is thread safe!");
-    }
-    else {
-        NSLog(@"Warning: SQLite is not thread safe.");
-    }
-    //[self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
-    // NSLog(@"open cb finished ok");
-}
-
-
--(void)openCustom: (NSMutableArray*)options
-{
-    CDVPluginResult* pluginResult = nil;
-    //NSMutableArray *options = [command objectAtIndex:0];
-    //NSString *dbname = [self getDBPath:[options objectForKey:@"name"]];
-    //========custom code===========================
-    //NSString *dbname = [options objectForKey:@"dbName"];
-    _dbName = [options objectAtIndex:0];
-    NSString *dbPath = [self databaseFullPath:_dbName];
-    databasePath = [NSString stringWithFormat:@"%@",dbPath];
-    [self copyDatabase:dbPath];
-    seDbPath = [NSString stringWithFormat:@"%@",dbPath];
-    
-    /*
-     int n = sqlite3_open([databasePath UTF8String], &database);
-     if (n!=SQLITE_OK) {
-     NSLog(@"数据库打开出错...");
-     return;
-     }else
-     {
-     NSLog(@"数据库打开成功...");
-     }*/
-    
-    NSValue *dbPointer;
-    
-    if (dbPath == NULL) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"You must specify database name"];
-    }
-    else {
-        dbPointer = [openDBs objectForKey:dbPath];
-        if (dbPointer != NULL) {
-            // NSLog(@"Reusing existing database connection");
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Database opened"];
-        }
-        else {
-            const char *name = [dbPath UTF8String];
-            // NSLog(@"using db name: %@", dbname);
-            sqlite3 *db;
-            
-            if (sqlite3_open(name, &db) != SQLITE_OK) {
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to open DB"];
-                return;
-            }
-            else {
-                // Extra for SQLCipher:
-                // const char *key = [@"your_key_here" UTF8String];
-                // if(key != NULL) sqlite3_key(db, key, strlen(key));
-                sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL, &sqlite_regexp, NULL, NULL);
-                
-                // Attempt to read the SQLite master table (test for SQLCipher version):
-                if(sqlite3_exec(db, (const char*)"SELECT count(*) FROM sqlite_master;", NULL, NULL, NULL) == SQLITE_OK) {
-                    dbPointer = [NSValue valueWithPointer:db];
-                    [openDBs setObject: dbPointer forKey: dbPath];
-                    
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Database opened"];
-                    
-                } else {
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Unable to encrypt DB"];
-                }
-            }
-        }
-    }
-    if (sqlite3_threadsafe()) {
-        NSLog(@"Good news: SQLite is thread safe!");
-    }
-    else {
-        NSLog(@"Warning: SQLite is not thread safe.");
-    }
-    //[self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
-    // NSLog(@"open cb finished ok");
-}
-
--(void) close: (CDVInvokedUrlCommand*)command
-{
-    CDVPluginResult* pluginResult = nil;
-    NSMutableDictionary *options = [command.arguments objectAtIndex:0];
-    
-    NSString *dbPath = [self getDBPath:[options objectForKey:@"path"]];
-    if (dbPath == NULL) {
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
-    }
-    else {
-        NSValue *val = [openDBs objectForKey:dbPath];
-        sqlite3 *db = [val pointerValue];
-        if (db == NULL) {
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Specified db was not open"];
-        }
-        else {
-            sqlite3_close (db);
-            [openDBs removeObjectForKey:dbPath];
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"DB closed"];
-        }
-    }
-    [self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
-}
-
--(void) closeSE: (NSString*)path
-{
-    NSString *dbPath = path;
-    if (dbPath == NULL) {
-        //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
-        NSLog(@"You must specify database path");
-    }
-    else {
-        NSValue *val = [openDBs objectForKey:dbPath];
-        sqlite3 *db = [val pointerValue];
-        if (db == NULL) {
-            //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Specified db was not open"];
-            NSLog(@"Specified db was not open");
-        }
-        else {
-            sqlite3_close (db);
-            [openDBs removeObjectForKey:dbPath];
-            //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"DB closed"];
-            NSLog(@"DB closed");
-        }
-    }
-    //[self.commandDelegate sendPluginResult:pluginResult callbackId: command.callbackId];
-}
-
-
-/*
- -(void) delete: (CDVInvokedUrlCommand*)command
- {
- 
- CDVPluginResult* pluginResult = nil;
- NSMutableDictionary *options = [command.arguments objectAtIndex:0];
- 
- NSString *dbPath = [self getDBPath:[options objectForKey:@"path"]];
- if(dbPath==NULL) {
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
- } else {
- if([[NSFileManager defaultManager]fileExistsAtPath:dbPath]) {
- [[NSFileManager defaultManager]removeItemAtPath:dbPath error:nil];
- [openDBs removeObjectForKey:dbPath];
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"DB deleted"];
- } else {
- pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"The database does not exist on that path"];
- }
- }
- [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
- 
- }
- */
-
--(void) backgroundExecuteSqlBatch: (CDVInvokedUrlCommand*)command
-{
-    [self executeSqlBatchSE:command];
-    //2014-10-08 13:54:10
-    //
-    //        [self.commandDelegate runInBackground:^{
-    //            //[self executeSqlBatch: command];
-    //            //NSString *strAction = command.methodName;
-    //            [self executeSqlBatchSE:command];
-    //            //NSLog(@"======backgroundExecuteSqlBatch========= %@",[command.arguments objectAtIndex:0]);
-    //        }];
-}
-
-
-
-/*
- 
- */
-
-//-(SqlArg*)ConvertToSqlArg:(NSMutableArray *) options
-//{
-//    
-//    SqlArg *sArg = [[SqlArg alloc] init];
-//    
-//    //    NSString *dbName = [NSString string];
-//    //    NSString *tbName = [NSString string];
-//    //NSMutableArray *columns = [NSMutableArray array];
-//    
-//    sArg.dbname = [options objectAtIndex:0];
-//    sArg.tbl =[options objectAtIndex:1];
-//    sArg.columns = [options objectAtIndex:2];
-//    sArg.values = [options objectAtIndex:3];
-//    
-//    return sArg;
-//}
-
-
--(NSMutableArray*)getOptionsArray:(CDVInvokedUrlCommand*)command
-{
-    // NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-    
-    
-    // @synchronized(self) {
-    
-    //NSRunLoop   *runloop = [NSRunLoop currentRunLoop];
-    
-    NSMutableArray *array = [NSMutableArray array];
-    
-    NSMutableArray *options = [command.arguments objectAtIndex:0];
-    NSString *strAction = command.methodName;
-    
-    NSString *dbName = [NSString string];
-    
-    NSString *tbName = [NSString string];
-    NSMutableArray *columns = [NSMutableArray array];
-    NSString *where = [NSString string];
-    //NSMutableArray *whereArgs = [NSMutableArray array];
-    //NSMutableArray *_whereArgs = [NSMutableArray array];
-    
-    NSString *groupBy = [NSString string];
-    NSString *having = [NSString string];
-    NSString *orderBy = [NSString string];;
-    NSString *limit = [NSString string];
-    
-    NSMutableArray *querys = [NSMutableArray array];
-    NSMutableArray *_querys = [NSMutableArray array];
-    
-    
-    if ([strAction isEqualToString:@"get"]) {
-        //NSMutableArray *getArray = [[NSMutableArray alloc] init];
-        
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columns = [options objectAtIndex:2];
-        where = [options objectAtIndex:3];
-        querys = [options objectAtIndex:4];
-        groupBy = [options objectAtIndex:5];
-        having = [options objectAtIndex:6];
-        orderBy = [options objectAtIndex:7];
-        limit = [options objectAtIndex:8];
-        
-        [array addObject:options];
-    }else if ([strAction isEqualToString:@"put"])
-    {
-        //SqlArg *arg =  [self ConvertToSqlArg:options];
-        
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columns = [options objectAtIndex:2];
-        querys = [options objectAtIndex:3];
-        
-        if (querys && [querys count]>0) {
-            for (int i=0; i<[querys count]; i++) {
-                NSMutableArray *putArray = [NSMutableArray array];
-                [putArray addObject:dbName];
-                [putArray addObject:tbName];
-                [putArray addObject:columns];
-                [putArray addObject:[querys objectAtIndex:i]];
-                [array addObject:putArray];
-            }
-        }
-    }else if ([strAction isEqualToString:@"post"])
-    {
-        NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
-        NSMutableArray *_options = [NSMutableArray array];
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columnsValues = [options objectAtIndex:2];
-        where = [options objectAtIndex:3];
-        querys = [options objectAtIndex:4];
-        
-        if (columnsValues && [columnsValues count]) {
-            //得到词典中所有KEY值
-            NSEnumerator * enumeratorKey = [columnsValues keyEnumerator];
-            //快速枚举遍历所有KEY的值
-            for (NSObject *object in enumeratorKey) {
-                //NSLog(@"遍历KEY的值: %@",object);
-                NSString *strcol = [NSString stringWithFormat:@"%@",object];
-                [columns addObject:strcol];
-                NSString *strValue = [NSString stringWithFormat:@"%@",[columnsValues objectForKey:strcol]];
-                [_querys addObject:strValue];
-            }
-        }
-        
-        if ((querys && [querys count])) {
-            for (int i=0; i<[querys count]; i++) {
-                [_querys addObject:[querys objectAtIndex:i]];
-            }
-        }
-        [_options addObject:dbName];
-        [_options addObject:tbName];
-        [_options addObject:columns];
-        [_options addObject:where];
-        [_options addObject:_querys];
-        
-        [array addObject:_options];
-        
-    }else if ([strAction isEqualToString:@"postArray"])
-    {
-        for (int i=0; i<[options count]; i++) {
-            NSMutableArray *arr  = [options objectAtIndex:i];
-            
-            
-            NSMutableDictionary *columnsValues = [NSMutableDictionary dictionary];
-            NSMutableArray *_columns = [NSMutableArray array];
-            NSMutableArray *_querys_ = [NSMutableArray array];
-            
-            
-            NSMutableArray *_options = [NSMutableArray array];
-            dbName = [arr objectAtIndex:0];
-            tbName = [arr objectAtIndex:1];
-            columnsValues = [arr objectAtIndex:2];
-            where = [arr objectAtIndex:3];
-            querys = [arr objectAtIndex:4];
-            
-            if (columnsValues && [columnsValues count]) {
-                //得到词典中所有KEY值
-                NSEnumerator * enumeratorKey = [columnsValues keyEnumerator];
-                //快速枚举遍历所有KEY的值
-                for (NSObject *object in enumeratorKey) {
-                    //NSLog(@"遍历KEY的值: %@",object);
-                    NSString *strcol = [NSString stringWithFormat:@"%@",object];
-                    [_columns addObject:strcol];
-                    NSString *strValue = [NSString stringWithFormat:@"%@",[columnsValues objectForKey:strcol]];
-                    [_querys_ addObject:strValue];
-                }
-            }
-            
-            if ((querys && [querys count])) {
-                for (int i=0; i<[querys count]; i++) {
-                    [_querys_ addObject:[querys objectAtIndex:i]];
-                }
-            }
-            [_options addObject:dbName];
-            [_options addObject:tbName];
-            [_options addObject:_columns];
-            [_options addObject:where];
-            [_options addObject:_querys_];
-            [array addObject:_options];
-        }
-        
-    }else if ([strAction isEqualToString:@"delete"])
-    {
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        where = [options objectAtIndex:2];
-        querys = [options objectAtIndex:3];
-        [array addObject:options];
-    }else if ([strAction isEqualToString:@"deleteArray"])
-    {
-        for (int i=0; i<[options count]; i++) {
-            
-            NSMutableArray *_options = [NSMutableArray array];
-            
-            NSMutableArray *arr = [options objectAtIndex:i];
-            NSMutableArray *_querys_ = [NSMutableArray array];
-            dbName = [arr objectAtIndex:0];
-            tbName = [arr objectAtIndex:1];
-            where = [arr objectAtIndex:2];
-            _querys_ = [arr objectAtIndex:3];
-            
-            [_options addObject:dbName];
-            [_options addObject:tbName];
-            [_options addObject:where];
-            [_options addObject:_querys_];
-            
-            [array addObject:_options];
-        }
-        
-    }
-    return array;
-    //}
-    //[pool drain];
-}
-
-- (NSData *)toJSONData:(id)theData{
-    
-    //NSLog(@"toJSONData  theData >>  %@ ",theData);
-    NSError *error = nil;
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:theData
-                                                       options:NSJSONWritingPrettyPrinted
-                                                         error:&error];
-    if ([jsonData length] > 0 && error == nil){
-        return jsonData;
-    }else{
-        return nil;
-    }
-}
-
--(NSMutableDictionary*)getSelectData:(NSMutableDictionary*)sourceData
-{
-    NSMutableDictionary *resultDic = [NSMutableDictionary dictionary];
-    
-    //NSString *resutValue = [NSString stringWithFormat:@"%@",resultArray];
-    NSString *resutValue = [NSString string];
-    //NSDictionary *myDictionary = [NSDictionary dictionaryWithObject:@&quot;Hello&quot; forKey:@&quot;World&quot;];
-    NSError *error;
-    //if (sourceData && [sourceData count]>0) {
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sourceData
-                                                       options:0
-                                                         error:&error];
-    if (!jsonData) {
-        NSLog(@"JSON error: %@", error);
-    } else {
-        NSString *JSONString = [[NSString alloc] initWithBytes:[jsonData bytes] length:[jsonData length] encoding:NSUTF8StringEncoding];
-        //NSLog(@"JSON OUTPUT: %@",JSONString);
-        resutValue = JSONString;
-        
-    }
-    NSData *jsonDataNew = [resutValue dataUsingEncoding:NSUTF8StringEncoding];
-    //NSError *error = nil;
-    resultDic = [NSJSONSerialization JSONObjectWithData:jsonDataNew options:NSJSONReadingMutableContainers error:&error];
-    
-    if(!resultDic) {
-        NSLog(@"%@",error);
-    }
-    else {
-        //Do Something
-        //NSLog(@"%@", resultDic);
-    }
-    //}
-    
-    return resultDic;
-}
-
-
-/*
-* 插入验证
-*
-*/
--(NSMutableArray*)query_in:(NSString *)sql
-{
-    NSMutableArray *array = [NSMutableArray array];
-    NSString *dbPath = [NSString stringWithFormat:@"%@",databasePath];
-    
-//    NSValue *dbPointer = [openDBs objectForKey:dbPath];
-//    if (dbPointer == NULL) {
-//        //return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No such database, you must open it first"];
-//    }
-//    sqlite3 *db = [dbPointer pointerValue];
-//    //database = db;
-    
-    int n = sqlite3_open([dbPath UTF8String], &database);
-    if (n!=SQLITE_OK) {
-        NSLog(@"can not open the database.");
-        return array;
-    }
-    
-    sqlite3_stmt *stmt = nil;
-    char * msql = (char*)[sql UTF8String];
-    sqlite3_prepare_v2(database, msql, -1, &stmt, NULL);
-    int code = sqlite3_step(stmt);
-    while (code==SQLITE_ROW) {
-        NSMutableArray *arr = [NSMutableArray array];
-        
-        char *c;
-        NSString *str = [NSString string];
-        
-        c = (char*)sqlite3_column_text(stmt, 0);
-        if (c) {
-            str = [NSString stringWithUTF8String:c];
-        }else
-        {
-            str=@"";
-        }
-        //[arr addObject:str];
-        
-        [array addObject:str];
-        code = sqlite3_step(stmt);
-    }
-    sqlite3_finalize(stmt);
-    sqlite3_close(database);
-    return array;
-}
-
-
-/*
- * update synctime
-*/
--(NSInteger)update_ins:(NSString *)sql{
-    
-    NSString *dbPath = [NSString stringWithFormat:@"%@",databasePath];
-    
-    int n = sqlite3_open([dbPath UTF8String], &database);
-    if(n != SQLITE_OK){
-        NSLog(@"can't open the database.");
-        return -1;
-    }
-    //NSDate *now = [NSDate date];
-    //NSLog(@"%@",[now description]);
-    //NSString *nowtime = [now description];
-    int result=-1;
-    
-    NSString *s = [[NSString alloc] initWithUTF8String:[sql UTF8String]];
-    char *msql = (char *) [s UTF8String];
-    char *merror = nil;
-    //int resultUpdatetblChangeLog = sqlite3_exec(database, msql, 0, 0,&merror);
-    result = sqlite3_exec(database, msql, 0, 0,&merror);
-    if(result!= SQLITE_OK){
-        NSLog(@" sql: %@" ,s);
-        NSLog(@"r = %d",result);
-        sqlite3_close(database);
-        return -1;
-    }
-    //NSLog(@"update sql: %@",ssql);
-    NSLog(@"m = %d",result);
-    if (merror) {
-        return -1;
-    }
-    sqlite3_close(database);
-    return result;
-}
-
-
-
-- (NSString*) getQuereyIns:(NSMutableArray*)array
-{
-    NSString *sql = [NSString string];
-    for (int i=0; i<[array count]; i++) {
-        NSString *s = @"";
-        s = [[array objectAtIndex:i] objectAtIndex:0];
-        sql = [sql stringByAppendingFormat:@"'%@',",s];
-    }
-     sql = [sql substringToIndex:[sql length]-1];
-    
-    return sql;
-}
-
-- (NSString*) getUpdateIns:(NSMutableArray*)array
-{
-    NSString *sql = [NSString string];
-    for (int i=0; i<[array count]; i++) {
-        NSString *s = @"";
-        s = [array objectAtIndex:i];
-        sql = [sql stringByAppendingFormat:@"'%@',",s];
-    }
-    sql = [sql substringToIndex:[sql length]-1];
-    
-    return sql;
-}
-
-
-/**
- * @brief
- @Expose
- */
-- (NSString*)getCurrentDateString
-{
-    NSDate *date = [NSDate date];
-    NSTimeZone *zone = [NSTimeZone systemTimeZone];
-    NSInteger interval = [zone secondsFromGMTForDate: date];
-    NSDate *localeDate = [date  dateByAddingTimeInterval: interval];
-    NSLog(@"%@", localeDate);
-    
-    //实例化一个NSDateFormatter对象
-    
-    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-    //设定时间格式,这里可以设置成自己需要的格式
-    [dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
-    //用[NSDate date]可以获取系统当前时间
-    NSString *currentDateStr = [dateFormatter stringFromDate:date];
-    return currentDateStr;
-}
-
-
--(void) executeSqlBatchSE: (CDVInvokedUrlCommand*)command
-{
-    // NSMutableArray *options = [command.arguments objectAtIndex:0];
-    
-    NSString *strAction = command.methodName;
-    
-    
-    NSMutableArray *options = [[NSMutableArray alloc] init];
-    
-    
-    CDVPluginResult* pluginResult;
-    
-    NSLog(@"strAction %@",strAction);
-    
-    if ([strAction isEqualToString:@"put"]) {
-        
-        options = [command.arguments objectAtIndex:0];
-        if (options && [options count]>0) {
-        }else
-        {
-            return;
-        }
-        
-        NSString *dbName = [NSString string];
-        
-        NSString *tbName = [NSString string];
-        NSMutableArray *columns = [[NSMutableArray alloc] init];
-        NSMutableArray *querys = [NSMutableArray array];
-        
-        NSMutableArray *existsPkValuses = [NSMutableArray array];
-        
-        
-        //
-        NSString *pk = [NSString string];
-        NSMutableArray *pkValues = [[NSMutableArray alloc] init];
-        
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columns = [options objectAtIndex:2];
-        querys = [options objectAtIndex:3];
-        
-        //NSLog(@"options >>>  %@",[options description]);
-        
-        if ([options count]==6) {
-            pk = [options objectAtIndex:4];
-            pkValues = [options objectAtIndex:5];
-            
-            NSString *str_in = @"";
-            if ([pk length]==0  || [pkValues isEqual:[NSNull null]]) {
-                NSLog(@"pk  or  pkValues is invalid.");
-            }else
-            {
-                if ([pkValues count]>0) {
-                    str_in = [self getQuereyIns:pkValues];
-                }
-                NSString *sql = [NSString string];
-                sql = [NSString stringWithFormat:@"select %@ from %@ where %@ in (%@)",pk,tbName,pk,str_in];
-                
-                NSMutableArray *_array = [NSMutableArray array];
-                _array = [self query_in:sql];
-                existsPkValuses = [NSMutableArray arrayWithArray:_array];
-                
-                //NSLog(@" array >>> %@",[_array description]);
-                if ([_array count]>0) {
-                    //update
-                    NSString *str_update = [NSString string];
-                    
-                    str_update = [NSString stringWithFormat:@"update %@ set SyncTime='%@' where %@ in (%@)",tbName,[self getCurrentDateString],pk,[self getUpdateIns:_array]];
-                    
-                    int result = [self update_ins:str_update];
-                    NSLog(@"result %d",result);
-                }
-            }
-         
-        }
-        
-        NSInteger pk_index=-1;
-        //new querys  过滤掉已经插入的数据
-        NSMutableArray *new_querys = [NSMutableArray array];
-        for(int m=0;m<[columns count]; m++)
-        {
-            if ([[[columns objectAtIndex:m] lowercaseString] isEqualToString:[pk lowercaseString]]) {
-                pk_index = m;
-                break;
-            }
-        }
-
-        if (querys && [querys count]>0) {
-            
-            for (int n=0; n<[querys count]; n++) {
-                NSMutableArray *_arr = [querys objectAtIndex:n];
-                
-                Boolean flag = false;
-                
-                for (int t=0; t<[existsPkValuses count]; t++) {
-                    if ([[existsPkValuses objectAtIndex:t] isEqualToString:[_arr objectAtIndex:pk_index]]) {
-                        flag = true;
-                        break;
-                    }
-                }
-                if (!flag) {
-                    [new_querys addObject:_arr];
-                }
-            }
-
-            
-            for (int i=0; i<[new_querys count]; i++) {
-                NSMutableArray *putArray = [NSMutableArray array];
-                [putArray addObject:dbName];
-                [putArray addObject:tbName];
-                [putArray addObject:columns];
-                
-                [putArray addObject:[new_querys objectAtIndex:i]];
-                
-                @synchronized(self) {
-                    //pluginResult = [self executeSqlWithDictSE:command];
-                    pluginResult = [self executeSqlWithDictSE:putArray action:strAction];
-                    
-                    NSMutableDictionary *resultDic = pluginResult.message;
-                    NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-                    if (code!=0) {
-                        [resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-                    }
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[resultDic objectForKey:@"insertId"] stringValue]];
-                }
-            }
-        }
-        
-    }else
-    {
-        options = [self getOptionsArray:command];
-        
-        NSMutableArray *results = [NSMutableArray arrayWithCapacity:0];
-        //CDVPluginResult* pluginResult;
-        @synchronized(self) {
-            for (int i=0;i<[options count];i++) {
-                //pluginResult = [self executeSqlWithDictSE:command];
-                pluginResult = [self executeSqlWithDictSE:[options objectAtIndex:i] action:strAction];
-                
-                if ([pluginResult.status intValue] == CDVCommandStatus_ERROR) {
-                    /* add error with result.message: */
-                    NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
-                    [r setObject:@"0" forKey:@"qid"];
-                    [r setObject:@"error" forKey:@"type"];
-                    [r setObject:pluginResult.message forKey:@"error"];
-                    [r setObject:pluginResult.message forKey:@"result"];
-                    [results addObject: r];
-                } else {
-                    /* add result with result.message: */
-                    NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
-                    [r setObject:@"0" forKey:@"qid"];
-                    [r setObject:@"success" forKey:@"type"];
-                    [r setObject:pluginResult.message forKey:@"result"];
-                    [results addObject: r];
-                }
-            }
-            //pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:results];
-            if ([strAction isEqualToString:@"get"]) {
-                //Select
-                NSMutableDictionary  *resultDic  = [NSMutableDictionary dictionary];
-                if ([pluginResult.message isKindOfClass:[NSMutableDictionary class]]) {
-                    
-                    NSMutableDictionary *resultDict = pluginResult.message;
-                    if ([resultDict count]>0) {
-                        resultDic = [self getSelectData:resultDict];
-                    }
-                }else{
-                    NSLog(@"pluginResult.message >  %@",pluginResult.message);
-                }
-                
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
-                
-            }else  if ([strAction isEqualToString:@"put"]) {
-                //insert
-                NSMutableDictionary *resultDic = pluginResult.message;
-                NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-                if (code!=0) {
-                    [resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-                }
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[[resultDic objectForKey:@"insertId"] stringValue]];
-            }else if ([strAction isEqualToString:@"post"] ||[strAction isEqualToString:@"postArray"])
-            {
-                //update
-                NSMutableDictionary *resultDic = pluginResult.message;
-                NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-                if (code!=0) {
-                    //[resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-                }
-                //result = new PluginResult(PluginResult.Status.OK, count);
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
-            }else if ([strAction isEqualToString:@"delete"]||[strAction isEqualToString:@"deleteArray"])
-            {
-                //delete
-                NSMutableDictionary *resultDic = pluginResult.message;
-                NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-                if (code!=0) {
-                    //[resultDic setObject:[NSNumber numberWithInteger:-1] forKey:@"insertId"];
-                }
-                //result = new PluginResult(PluginResult.Status.OK, count);
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
-            }else
-            {
-                //delete
-                NSMutableDictionary *resultDic = pluginResult.message;
-                //NSInteger  code = [[resultDic objectForKey:@"code"] integerValue];
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultDic];
-            }
-        }
-    }
-    [self closeSE:seDbPath];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-
--(void) executeSqlBatch: (CDVInvokedUrlCommand*)command
-{
-    NSMutableDictionary *options = [command.arguments objectAtIndex:0];
-    
-    NSMutableArray *results = [NSMutableArray arrayWithCapacity:0];
-    NSMutableDictionary *dbargs = [options objectForKey:@"dbargs"];
-    NSMutableArray *executes = [options objectForKey:@"executes"];
-    CDVPluginResult* pluginResult;
-    @synchronized(self) {
-        for (NSMutableDictionary *dict in executes) {
-            CDVPluginResult *result = [self executeSqlWithDict:dict andArgs:dbargs];
-            if ([result.status intValue] == CDVCommandStatus_ERROR) {
-                /* add error with result.message: */
-                NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
-                [r setObject:[dict objectForKey:@"qid"] forKey:@"qid"];
-                [r setObject:@"error" forKey:@"type"];
-                [r setObject:result.message forKey:@"error"];
-                [r setObject:result.message forKey:@"result"];
-                [results addObject: r];
-            } else {
-                /* add result with result.message: */
-                NSMutableDictionary *r = [NSMutableDictionary dictionaryWithCapacity:0];
-                [r setObject:[dict objectForKey:@"qid"] forKey:@"qid"];
-                [r setObject:@"success" forKey:@"type"];
-                [r setObject:result.message forKey:@"result"];
-                [results addObject: r];
-            }
-        }
-        
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:results];
-    }
-    
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
--(void) backgroundExecuteSql: (CDVInvokedUrlCommand*)command
-{
-    [self.commandDelegate runInBackground:^{
-        [self executeSql:command];
-    }];
-}
-
--(void) executeSql: (CDVInvokedUrlCommand*)command
-{
-    NSMutableDictionary *options = [command.arguments objectAtIndex:0];
-    NSMutableDictionary *dbargs = [options objectForKey:@"dbargs"];
-    NSMutableDictionary *ex = [options objectForKey:@"ex"];
-    
-    CDVPluginResult* pluginResult;
-    @synchronized (self) {
-        pluginResult = [self executeSqlWithDict: ex andArgs: dbargs];
-    }
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-//========
-#pragma custom code   by xyl
--(CDVPluginResult*) executeSqlWithDictSE: (NSMutableArray*)options action:(NSString*)action
-{
-    // NSMutableArray *options = [command.arguments objectAtIndex:0];
-    NSString *strAction = [NSString stringWithString:action];
-    
-    NSString *tbName = [NSString string];
-    NSString *dbName = [NSString string];
-    NSMutableArray *columns = [NSMutableArray array];
-    NSString *where = [NSString string];
-    //NSMutableArray *whereArgs = [NSMutableArray array];
-    NSMutableArray *querys = [NSMutableArray array];
-    
-    NSString *groupBy = [NSString string];
-    NSString *having = [NSString string];
-    NSString *orderBy = [NSString string];;
-    NSString *limit = [NSString string];
-    
-    if ([strAction isEqualToString:@"get"]) {
-        
-        tbName = [options objectAtIndex:1];
-        dbName = [options objectAtIndex:0];
-        columns = [options objectAtIndex:2];
-        where = [options objectAtIndex:3];
-        querys = [options objectAtIndex:4];
-        groupBy = [options objectAtIndex:5];
-        having = [options objectAtIndex:6];
-        orderBy = [options objectAtIndex:7];
-        limit = [options objectAtIndex:8];
-    }else if ([strAction isEqualToString:@"put"])
-    {
-        //NSLog(@"tbname %@ >>>>",[options objectAtIndex:1]);
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columns = [options objectAtIndex:2];
-        querys = [options objectAtIndex:3];
-    }else if ([strAction isEqualToString:@"post"])
-    {
-        //NSLog(@"tbname %@ >>>>",[options objectAtIndex:1]);
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columns = [options objectAtIndex:2];
-        where = [options objectAtIndex:3];
-        querys = [options objectAtIndex:4];
-    }else if ([strAction isEqualToString:@"postArray"])
-    {
-        //NSLog(@"tbname %@ >>>>",[options objectAtIndex:1]);
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        columns = [options objectAtIndex:2];
-        where = [options objectAtIndex:3];
-        querys = [options objectAtIndex:4];
-    }else if ([strAction isEqualToString:@"delete"])
-    {
-        //NSLog(@"tbname %@ >>>>",[options objectAtIndex:1]);
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        where = [options objectAtIndex:2];
-        querys = [options objectAtIndex:3];
-    }else if ([strAction isEqualToString:@"deleteArray"])
-    {
-        //NSLog(@"tbname %@ >>>>",[options objectAtIndex:1]);
-        dbName = [options objectAtIndex:0];
-        tbName = [options objectAtIndex:1];
-        where = [options objectAtIndex:2];
-        querys = [options objectAtIndex:3];
-    }
-    
-    
-    NSString *dbPath = [NSString stringWithFormat:@"%@",databasePath];
-    NSString *query = [NSString stringWithFormat:@"BEGIN"];
-    //NSString *sql = [NSString stringWithFormat:@"select UserId,UserName,Email from %@ where UserId='001'",tbName];
-    NSString *sql = [NSString string];
-    
-    if ([strAction isEqualToString:@"get"]) {
-        sql = [self selectSE:options];
-    }else   if ([strAction isEqualToString:@"put"]) {
-        sql = [self insertSE:options];
-    }else   if ([strAction isEqualToString:@"post"]) {
-        sql = [self updateSE:options];
-    }else   if ([strAction isEqualToString:@"delete"]) {
-        sql = [self deleteSE:options];
-    }else   if ([strAction isEqualToString:@"postArray"]) {
-        sql = [self updateSE:options];
-    }else   if ([strAction isEqualToString:@"deleteArray"]) {
-        sql = [self deleteSE:options];
-    }
-    else
-    {
-        return nil;
-    }
-    //sql = [NSString stringWithFormat:@"select UserId,UserName,Email from %@  ",tbName];
-    query = sql;
-    
-    //NSLog(@"sql info %@ >>>",[querys description]);
-    
-    if (dbPath == NULL) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
-    }
-    if (query == NULL) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify a query to execute"];
-    }
-    NSValue *dbPointer = [openDBs objectForKey:dbPath];
-    if (dbPointer == NULL) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No such database, you must open it first"];
-    }
-    sqlite3 *db = [dbPointer pointerValue];
-    //database = db;
-    //    int n = sqlite3_open([databasePath UTF8String], &database);
-    //    if (n!=SQLITE_OK) {
-    //        NSLog(@"数据库打开出错...");
-    //    }else
-    //    {
-    //        NSLog(@"数据库打开成功...");
-    //    }
-    const char *sql_stmt = [query UTF8String];
-    NSDictionary *error = nil;
-    sqlite3_stmt *statement;
-    int result, i, column_type, count;
-    int previousRowsAffected, nowRowsAffected, diffRowsAffected;
-    long long previousInsertId, nowInsertId;
-    BOOL keepGoing = YES;
-    BOOL hasInsertId;
-    NSMutableDictionary *resultSet = [NSMutableDictionary dictionaryWithCapacity:0];
-    NSMutableArray *resultRows = [NSMutableArray arrayWithCapacity:0];
-    NSMutableDictionary *entry;
-    NSObject *columnValue;
-    NSString *columnName;
-    NSObject *insertId;
-    NSObject *rowsAffected;
-    
-    hasInsertId = NO;
-    previousRowsAffected = sqlite3_total_changes(db);
-    previousInsertId = sqlite3_last_insert_rowid(db);
-    
-    if (sqlite3_prepare_v2(db, sql_stmt, -1, &statement, NULL) != SQLITE_OK) {
-        error = [DbHelper captureSQLiteErrorFromDb:db];
-        keepGoing = NO;
-    } else {
-        NSString *strWithArg =@"";
-        for (int b = 0; b < [querys count]; b++) {
-            [self bindStatement:statement withArg:[querys objectAtIndex:b] atIndex:b+1];
-            //strWithArg = [NSString stringWithFormat:@"%@ ,%@",strWithArg,[querys objectAtIndex:b] ];
-            
-        }
-        //NSLog(@"sql Arg %@",strWithArg);
-    }
-    while (keepGoing) {
-        result = sqlite3_step (statement);
-        switch (result) {
-            case SQLITE_ROW:
-                i = 0;
-                entry = [NSMutableDictionary dictionaryWithCapacity:0];
-                count = sqlite3_column_count(statement);
-                
-                while (i < count) {
-                    columnValue = nil;
-                    columnName = [NSString stringWithFormat:@"%s", sqlite3_column_name(statement, i)];
-                    
-                    column_type = sqlite3_column_type(statement, i);
-                    
-                    switch (column_type) {
-                        case SQLITE_INTEGER:
-                            columnValue = [NSNumber numberWithDouble: sqlite3_column_double(statement, i)];
-                            break;
-                        case SQLITE_TEXT:
-                            columnValue = [NSString stringWithUTF8String:(char *)sqlite3_column_text(statement, i)];
-                            break;
-                        case SQLITE_BLOB:
-                            //LIBB64
-                            columnValue = [DbHelper getBlobAsBase64String: sqlite3_column_blob(statement, i)
-                                                               withlength: sqlite3_column_bytes(statement, i) ];
-                            //LIBB64---END
-                            break;
-                        case SQLITE_FLOAT:
-                            columnValue = [NSNumber numberWithFloat: sqlite3_column_double(statement, i)];
-                            break;
-                        case SQLITE_NULL:
-                            columnValue = [NSNull null];
-                            break;
-                    }
-                    
-                    if (columnValue) {
-                        [entry setObject:columnValue forKey:columnName];
-                    }
-                    i++;
-                }
-                [resultRows addObject:entry];
-                break;
-            case SQLITE_DONE:
-            {
-                nowRowsAffected = sqlite3_total_changes(db);
-                diffRowsAffected = nowRowsAffected - previousRowsAffected;
-                rowsAffected = [NSNumber numberWithInt:diffRowsAffected];
-                nowInsertId = sqlite3_last_insert_rowid(db);
-                if (nowRowsAffected > 0 && nowInsertId != 0) {
-                    hasInsertId = YES;
-                    insertId = [NSNumber numberWithLongLong:sqlite3_last_insert_rowid(db)];
-                }
-                keepGoing = NO;
-            }
-                break;
-            default:
-                //                error = [DbHelper captureSQLiteErrorFromDb:db];
-                //                keepGoing = NO;
-                break;
-        }
-    }
-    sqlite3_finalize (statement);
-    
-    if (error) {
-        //NSLog(@"executeSqlWithDictSE  options >>%@",options);
-        NSLog(@"executeSqlWithDictSE  error >> %@",error);
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:error];
-    }
-    [resultSet setObject:resultRows forKey:@"rows"];
-    [resultSet setObject:rowsAffected forKey:@"rowsAffected"];
-    if (hasInsertId) {
-        [resultSet setObject:insertId forKey:@"insertId"];
-    }
-    //[self closeSE:dbPath];
-    
-    return [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultSet];
-}
-
-
-#pragma custom code
-
--(CDVPluginResult*) executeSqlWithDict: (NSMutableDictionary*)options andArgs: (NSMutableDictionary*)dbargs
-{
-    NSString *dbPath = [self getDBPath:[dbargs objectForKey:@"dbname"]];
-    
-    NSMutableArray *query_parts = [options objectForKey:@"query"];
-    NSString *query = [query_parts objectAtIndex:0];
-    
-    if (dbPath == NULL) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];
-    }
-    if (query == NULL) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify a query to execute"];
-    }
-    
-    NSValue *dbPointer = [openDBs objectForKey:dbPath];
-    if (dbPointer == NULL) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No such database, you must open it first"];
-    }
-    sqlite3 *db = [dbPointer pointerValue];
-    
-    const char *sql_stmt = [query UTF8String];
-    NSDictionary *error = nil;
-    sqlite3_stmt *statement;
-    int result, i, column_type, count;
-    int previousRowsAffected, nowRowsAffected, diffRowsAffected;
-    long long previousInsertId, nowInsertId;
-    BOOL keepGoing = YES;
-    BOOL hasInsertId;
-    NSMutableDictionary *resultSet = [NSMutableDictionary dictionaryWithCapacity:0];
-    NSMutableArray *resultRows = [NSMutableArray arrayWithCapacity:0];
-    NSMutableDictionary *entry;
-    NSObject *columnValue;
-    NSString *columnName;
-    NSObject *insertId;
-    NSObject *rowsAffected;
-    
-    hasInsertId = NO;
-    previousRowsAffected = sqlite3_total_changes(db);
-    previousInsertId = sqlite3_last_insert_rowid(db);
-    
-    if (sqlite3_prepare_v2(db, sql_stmt, -1, &statement, NULL) != SQLITE_OK) {
-        error = [DbHelper captureSQLiteErrorFromDb:db];
-        keepGoing = NO;
-    } else {
-        for (int b = 1; b < query_parts.count; b++) {
-            [self bindStatement:statement withArg:[query_parts objectAtIndex:b] atIndex:b];
-        }
-    }
-    
-    while (keepGoing) {
-        result = sqlite3_step (statement);
-        switch (result) {
-                
-            case SQLITE_ROW:
-                i = 0;
-                entry = [NSMutableDictionary dictionaryWithCapacity:0];
-                count = sqlite3_column_count(statement);
-                
-                while (i < count) {
-                    columnValue = nil;
-                    columnName = [NSString stringWithFormat:@"%s", sqlite3_column_name(statement, i)];
-                    
-                    column_type = sqlite3_column_type(statement, i);
-                    switch (column_type) {
-                        case SQLITE_INTEGER:
-                            columnValue = [NSNumber numberWithDouble: sqlite3_column_double(statement, i)];
-                            break;
-                        case SQLITE_TEXT:
-                            columnValue = [NSString stringWithUTF8String:(char *)sqlite3_column_text(statement, i)];
-                            break;
-                        case SQLITE_BLOB:
-                            //LIBB64
-                            columnValue = [DbHelper getBlobAsBase64String: sqlite3_column_blob(statement, i)
-                                                               withlength: sqlite3_column_bytes(statement, i) ];
-                            //LIBB64---END
-                            break;
-                        case SQLITE_FLOAT:
-                            columnValue = [NSNumber numberWithFloat: sqlite3_column_double(statement, i)];
-                            break;
-                        case SQLITE_NULL:
-                            columnValue = [NSNull null];
-                            break;
-                    }
-                    
-                    if (columnValue) {
-                        [entry setObject:columnValue forKey:columnName];
-                    }
-                    i++;
-                }
-                [resultRows addObject:entry];
-                break;
-                
-            case SQLITE_DONE:
-                nowRowsAffected = sqlite3_total_changes(db);
-                diffRowsAffected = nowRowsAffected - previousRowsAffected;
-                rowsAffected = [NSNumber numberWithInt:diffRowsAffected];
-                nowInsertId = sqlite3_last_insert_rowid(db);
-                if (nowRowsAffected > 0 && nowInsertId != 0) {
-                    hasInsertId = YES;
-                    insertId = [NSNumber numberWithLongLong:sqlite3_last_insert_rowid(db)];
-                }
-                keepGoing = NO;
-                break;
-                
-            default:
-                error = [DbHelper captureSQLiteErrorFromDb:db];
-                keepGoing = NO;
-        }
-    }
-    
-    sqlite3_finalize (statement);
-    
-    if (error) {
-        return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:error];
-    }
-    
-    [resultSet setObject:resultRows forKey:@"rows"];
-    [resultSet setObject:rowsAffected forKey:@"rowsAffected"];
-    if (hasInsertId) {
-        [resultSet setObject:insertId forKey:@"insertId"];
-    }
-    return [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:resultSet];
-}
-
--(void)bindStatement:(sqlite3_stmt *)statement withArg:(NSObject *)arg atIndex:(NSUInteger)argIndex
-{
-    if ([arg isEqual:[NSNull null]]) {
-        sqlite3_bind_null(statement, argIndex);
-    } else if ([arg isKindOfClass:[NSNumber class]]) {
-        NSNumber *numberArg = (NSNumber *)arg;
-        const char *numberType = [numberArg objCType];
-        if (strcmp(numberType, @encode(int)) == 0) {
-            sqlite3_bind_int(statement, argIndex, [numberArg integerValue]);
-        } else if (strcmp(numberType, @encode(long long int)) == 0) {
-            sqlite3_bind_int64(statement, argIndex, [numberArg longLongValue]);
-        } else if (strcmp(numberType, @encode(double)) == 0) {
-            sqlite3_bind_double(statement, argIndex, [numberArg doubleValue]);
-        } else {
-            sqlite3_bind_text(statement, argIndex, [[NSString stringWithFormat:@"%@", arg] UTF8String], -1, SQLITE_TRANSIENT);
-        }
-    } else { // NSString
-        NSString *stringArg = (NSString *)arg;
-        NSData *data = [stringArg dataUsingEncoding:NSUTF8StringEncoding];
-        
-        sqlite3_bind_text(statement, argIndex, data.bytes, data.length, SQLITE_TRANSIENT);
-    }
-}
-
--(void)dealloc
-{
-    int i;
-    NSArray *keys = [openDBs allKeys];
-    NSValue *pointer;
-    NSString *key;
-    sqlite3 *db;
-    
-    /* close db the user forgot */
-    for (i=0; i<[keys count]; i++) {
-        key = [keys objectAtIndex:i];
-        pointer = [openDBs objectForKey:key];
-        db = [pointer pointerValue];
-        sqlite3_close (db);
-    }
-    
-#if !__has_feature(objc_arc)
-    [openDBs release];
-    [appDocsPath release];
-    [super dealloc];
-#endif
-}
-
-+(NSDictionary *)captureSQLiteErrorFromDb:(sqlite3 *)db
-{
-    int code = sqlite3_errcode(db);
-    int webSQLCode = [DbHelper mapSQLiteErrorCode:code];
-#if INCLUDE_SQLITE_ERROR_INFO
-    int extendedCode = sqlite3_extended_errcode(db);
-#endif
-    const char *message = sqlite3_errmsg(db);
-    
-    NSMutableDictionary *error = [NSMutableDictionary dictionaryWithCapacity:4];
-    
-    [error setObject:[NSNumber numberWithInt:webSQLCode] forKey:@"code"];
-    [error setObject:[NSString stringWithUTF8String:message] forKey:@"message"];
-    
-#if INCLUDE_SQLITE_ERROR_INFO
-    [error setObject:[NSNumber numberWithInt:code] forKey:@"sqliteCode"];
-    [error setObject:[NSNumber numberWithInt:extendedCode] forKey:@"sqliteExtendedCode"];
-    [error setObject:[NSString stringWithUTF8String:message] forKey:@"sqliteMessage"];
-#endif
-    
-    return error;
-}
-
-+(int)mapSQLiteErrorCode:(int)code
-{
-    // map the sqlite error code to
-    // the websql error code
-    switch(code) {
-        case SQLITE_ERROR:
-            return SYNTAX_ERR;
-        case SQLITE_FULL:
-            return QUOTA_ERR;
-        case SQLITE_CONSTRAINT:
-            return CONSTRAINT_ERR;
-        default:
-            return UNKNOWN_ERR;
-    }
-}
-
-+(id) getBlobAsBase64String:(const char*) blob_chars
-                 withlength: (int) blob_length
-{
-    base64_encodestate b64state;
-    
-    base64_init_encodestate(&b64state);
-    
-    //2* ensures 3 bytes -> 4 Base64 characters + null for NSString init
-    char* code = malloc (2*blob_length*sizeof(char));
-    
-    int codelength;
-    int endlength;
-    
-    codelength = base64_encode_block(blob_chars,blob_length,code,&b64state,0);
-    
-    endlength = base64_encode_blockend(&code[codelength], &b64state);
-    
-    //Adding in a null in order to use initWithUTF8String, expecting null terminated char* string
-    code[codelength+endlength] = '\0';
-    
-    NSString* result = [NSString stringWithUTF8String: code];
-    
-    free(code);
-    
-    return result;
-}
-
-@end
