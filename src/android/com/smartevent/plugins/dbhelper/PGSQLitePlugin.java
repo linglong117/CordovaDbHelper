@@ -493,7 +493,7 @@ public class PGSQLitePlugin {
 				JSONArray updateData = new JSONArray();
 				
 				if ([pk length]==0) {
-                	NSLog(@"pk  or  pkValues is invalid.");
+                	Log("insertQuery >>>> ","pk  or  pkValues is invalid.");
            		}else
 	            {
 	            	selectData.put(dbName);
