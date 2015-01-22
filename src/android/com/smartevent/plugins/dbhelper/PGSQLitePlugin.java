@@ -492,106 +492,112 @@ public class PGSQLitePlugin {
 				JSONArray selectData = new JSONArray();
 				JSONArray updateData = new JSONArray();
 				
-				if ([pk length]==0) {
-                	Log("insertQuery >>>> ","pk  or  pkValues is invalid.");
-           		}else
-	            {
-	            	selectData.put(dbName);
-				selectData.put(tableName);
-				selectData.put(new JSONArray().put(pk));
-				//selectData.put(pk+"=?");//where
-				selectData.put(pk + "  in (?)");//where
+				if (pk.length() == 0) {
+					Log.i("insertQuery >>>> ", "pk  or  pkValues is invalid.");
+				} else {
+					selectData.put(dbName);
+					selectData.put(tableName);
+					selectData.put(new JSONArray().put(pk));
+					// selectData.put(pk+"=?");//where
+					selectData.put(pk + "  in (?)");// where
 
-				//				
-				updateData.put(dbName);
-				updateData.put(tableName);
-				//updateData.put(tableName);
-				
-				//ContentValues _pkvalue =null; 
-				JSONArray pkvalue = null;
-				
-				StringBuffer strbf_in = new StringBuffer();
-				 String str_in="";
-				String[] str_ins= null;
-				str_ins = new String[pkValues.length()];
-				for (int m = 0; m < pkValues.length(); m++) {
-				    String column = pkValues.getJSONArray(m).getString(0).toString();
-					column = "'"+column+"',";
-				    strbf_in.append(column);
-				    str_in = strbf_in.toString();
-				    str_in = str_in.substring(0, str_in.length()-1);
-				    
-				    str_ins[m] = column;
-				}
-				
-				selectData.put(str_in);
-				//
-				JSONArray  mresult  = query_having_in(selectData);
-				String str_update="";
-				if(mresult!=null && mresult.length()>0)
-				{
-					StringBuffer strbf_update= new StringBuffer();
-					for (int m = 0; m < mresult.length(); m++) {
-						pkvalue = pkValues.getJSONArray(m);
-						existsPkValuses.put(pkvalue);
-						
-						String _pkvalue = mresult.getJSONArray(m).getString(0).toString();
-						_pkvalue = "'" + _pkvalue + "',";
-						strbf_update.append(_pkvalue);
+					//
+					updateData.put(dbName);
+					updateData.put(tableName);
+					// updateData.put(tableName);
+
+					// ContentValues _pkvalue =null;
+					JSONArray pkvalue = null;
+
+					StringBuffer strbf_in = new StringBuffer();
+					String str_in = "";
+					String[] str_ins = null;
+					str_ins = new String[pkValues.length()];
+					for (int m = 0; m < pkValues.length(); m++) {
+						String column = pkValues.getJSONArray(m).getString(0)
+								.toString();
+						column = "'" + column + "',";
+						strbf_in.append(column);
+						str_in = strbf_in.toString();
+						str_in = str_in.substring(0, str_in.length() - 1);
+
+						str_ins[m] = column;
 					}
-					str_update = strbf_update.toString();
-					str_update = str_update.substring(0, str_update.length()-1);
-					
-					//更新时间
-					JSONObject obj = new JSONObject();
-					Date date = null;
-					SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
-					date = new Date();
-					String strTime = format.format(date);
-					obj.put("SyncTime", strTime);
-					
-					SQLiteDatabase _db = getDb(dbName);
-					String sql_update = "update " + tableName +" set SyncTime='"+ strTime +"' where  " +pk +" in("+str_update+")";
-					_db.execSQL(sql_update);
 
-//					updateData.put(obj);
-//					updateData.put(pk + "in(?)");
-//					updateData.put(str_update);
-//				    // int r =	_db.update(tableName, obj, whereClause, whereArgs);
-//					result = updateQuery(updateData);
-					Log.d("update >>>> ", "  2015-1-20 12:28:17");
+					selectData.put(str_in);
+					//
+					JSONArray mresult = query_having_in(selectData);
+					String str_update = "";
+					if (mresult != null && mresult.length() > 0) {
+						StringBuffer strbf_update = new StringBuffer();
+						for (int m = 0; m < mresult.length(); m++) {
+							pkvalue = pkValues.getJSONArray(m);
+							existsPkValuses.put(pkvalue);
+
+							String _pkvalue = mresult.getJSONArray(m)
+									.getString(0).toString();
+							_pkvalue = "'" + _pkvalue + "',";
+							strbf_update.append(_pkvalue);
+						}
+						str_update = strbf_update.toString();
+						str_update = str_update.substring(0,
+								str_update.length() - 1);
+
+						// 更新时间
+						JSONObject obj = new JSONObject();
+						Date date = null;
+						SimpleDateFormat format = new SimpleDateFormat(
+								"yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
+						date = new Date();
+						String strTime = format.format(date);
+						obj.put("SyncTime", strTime);
+
+						SQLiteDatabase _db = getDb(dbName);
+						String sql_update = "update " + tableName
+								+ " set SyncTime='" + strTime + "' where  "
+								+ pk + " in(" + str_update + ")";
+						_db.execSQL(sql_update);
+
+						// updateData.put(obj);
+						// updateData.put(pk + "in(?)");
+						// updateData.put(str_update);
+						// // int r = _db.update(tableName, obj, whereClause,
+						// whereArgs);
+						// result = updateQuery(updateData);
+						Log.d("update >>>> ", "  2015-1-20 12:28:17");
+					}
+
+					// // _pkvalue = new ContentValues();
+					// pkvalue = pkValues.getJSONArray(m);
+					// selectData.put(pkvalue);
+					// // Cursor cs = db.query(tableName, _columns, where,
+					// // _whereArgs, "", "", "", "");
+					// if (pk.length() > 0) {
+					// rowCount = query_having(selectData);
+					// //Log.i("select  result >>>> ", rowCount + "");
+					// if (rowCount > 0) {
+					// existsPkValuses.put(pkvalue);
+					// // update synctime
+					// Date date = null;
+					// SimpleDateFormat format = new
+					// SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//
+					// 获取当前时间，进一步转化为字符串
+					// date = new Date();
+					// String str = format.format(date);
+					// obj.put("SyncTime", str);
+					//
+					// updateData.put(obj);
+					// updateData.put(pk + "=?");
+					// updateData.put(pkvalue);
+					//
+					// result = updateQuery(updateData);
+					// //Log.d("update  synctime result >>>>> ", m+ " >>  "+
+					// result.getMessage());
+					// }
+					// }
 				}
-				
-				
-					
-//					// _pkvalue = new ContentValues();
-//					pkvalue = pkValues.getJSONArray(m);
-//					selectData.put(pkvalue);
-//					// Cursor cs = db.query(tableName, _columns, where,
-//					// _whereArgs, "", "", "", "");
-//					if (pk.length() > 0) {
-//						rowCount = query_having(selectData);
-//						//Log.i("select  result >>>> ", rowCount + "");
-//						if (rowCount > 0) {
-//							existsPkValuses.put(pkvalue);
-//							// update synctime
-//							Date date = null;
-//							SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 获取当前时间，进一步转化为字符串
-//							date = new Date();
-//							String str = format.format(date);
-//							obj.put("SyncTime", str);
-//
-//							updateData.put(obj);
-//							updateData.put(pk + "=?");
-//							updateData.put(pkvalue);
-//
-//							result = updateQuery(updateData);
-//							//Log.d("update  synctime result >>>>> ", m+ " >>  "+ result.getMessage());
-//						}
-//					}
-	            }				
 			}
-			
+
 			long id = 0;
 			SQLiteDatabase db = getDb(dbName);
 			ContentValues _values = null;
