@@ -352,6 +352,9 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     whereArgs = [options objectAtIndex:3];
     
     NSString *sql = [NSString string];
+    
+    NSString *cursql = [NSString string];
+    
     sql = [@"INSERT INTO " stringByAppendingFormat:@" %@ (",tbName];
     
     if (columns && [columns count]>0) {
@@ -364,6 +367,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     
     sql = [sql stringByAppendingString:@") VALUES ("];
     
+    cursql = sql;
+    
     if (columns && [columns count]>0) {
         for (int i=0;i<[columns count];i++) {
             sql = [sql stringByAppendingFormat:@"%@,",@"?"];
@@ -371,6 +376,16 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         sql = [sql substringToIndex:[sql length]-1];
     }
     sql = [sql stringByAppendingString:@")"];
+    
+    if (whereArgs && [whereArgs count]>0) {
+        for (int i=0;i<[whereArgs count];i++) {
+            cursql = [cursql stringByAppendingFormat:@"'%@',",[whereArgs objectAtIndex:i]];
+        }
+        cursql = [cursql substringToIndex:[cursql length]-1];
+    }
+    cursql = [cursql stringByAppendingString:@")"];
+
+    //NSLog(@"cursql >>>  %@",cursql);
     
     /*
      var aSql = [];
@@ -539,7 +554,10 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     // NSMutableArray *options = [command.arguments objectAtIndex:0];
     NSString *dbName = [options objectAtIndex:0];
     NSString *tbName = [options objectAtIndex:1];
-    NSMutableArray *columns = [options objectAtIndex:2];
+    NSMutableArray *columns = [NSMutableArray array];
+    
+    
+    columns = [options objectAtIndex:2];
     NSString *where = [options objectAtIndex:3];
     NSMutableArray *whereArgs = [options objectAtIndex:4];
     NSString *groupBy = [options objectAtIndex:5];
@@ -1423,7 +1441,9 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     NSString *strAction = command.methodName;
     
     
-    NSMutableArray *options = [NSMutableArray array];
+    NSMutableArray *options = [[NSMutableArray alloc] init];
+    
+    
     CDVPluginResult* pluginResult;
     
     NSLog(@"strAction %@",strAction);
@@ -1432,7 +1452,6 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         
         options = [command.arguments objectAtIndex:0];
         if (options && [options count]>0) {
-            
         }else
         {
             return;
@@ -1441,7 +1460,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         NSString *dbName = [NSString string];
         
         NSString *tbName = [NSString string];
-        NSMutableArray *columns = [NSMutableArray array];
+        NSMutableArray *columns = [[NSMutableArray alloc] init];
         NSMutableArray *querys = [NSMutableArray array];
         
         NSMutableArray *existsPkValuses = [NSMutableArray array];
@@ -1449,39 +1468,46 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         
         //
         NSString *pk = [NSString string];
-        NSMutableArray *pkValues = [NSMutableArray array];
+        NSMutableArray *pkValues = [[NSMutableArray alloc] init];
         
         dbName = [options objectAtIndex:0];
         tbName = [options objectAtIndex:1];
         columns = [options objectAtIndex:2];
         querys = [options objectAtIndex:3];
         
+        //NSLog(@"options >>>  %@",[options description]);
+        
         if ([options count]==6) {
             pk = [options objectAtIndex:4];
             pkValues = [options objectAtIndex:5];
             
             NSString *str_in = @"";
-            if ([pkValues count]>0) {
-                str_in = [self getQuereyIns:pkValues];
+            if ([pk length]==0  || [pkValues isEqual:[NSNull null]]) {
+                NSLog(@"pk  or  pkValues is invalid.");
+            }else
+            {
+                if ([pkValues count]>0) {
+                    str_in = [self getQuereyIns:pkValues];
+                }
+                NSString *sql = [NSString string];
+                sql = [NSString stringWithFormat:@"select %@ from %@ where %@ in (%@)",pk,tbName,pk,str_in];
+                
+                NSMutableArray *_array = [NSMutableArray array];
+                _array = [self query_in:sql];
+                existsPkValuses = [NSMutableArray arrayWithArray:_array];
+                
+                //NSLog(@" array >>> %@",[_array description]);
+                if ([_array count]>0) {
+                    //update
+                    NSString *str_update = [NSString string];
+                    
+                    str_update = [NSString stringWithFormat:@"update %@ set SyncTime='%@' where %@ in (%@)",tbName,[self getCurrentDateString],pk,[self getUpdateIns:_array]];
+                    
+                    int result = [self update_ins:str_update];
+                    NSLog(@"result %d",result);
+                }
             }
-            NSString *sql = [NSString string];
-            sql = [NSString stringWithFormat:@"select %@ from %@ where %@ in (%@)",pk,tbName,pk,str_in];
-            
-            NSMutableArray *_array = [self query_in:sql];
-            existsPkValuses = [NSMutableArray arrayWithArray:_array];
-            
-            NSLog(@" array >>> %@",[_array description]);
-            
-            if ([_array count]>0) {
-                //update
-                NSString *str_update = [NSString string];
-                
-                str_update = [NSString stringWithFormat:@"update %@ set SyncTime='%@' where %@ in (%@)",tbName,[self getCurrentDateString],pk,[self getUpdateIns:_array]];
-                
-                int result = [self update_ins:str_update];
-                
-                NSLog(@"result %d",result);
-            }
+         
         }
         
         NSInteger pk_index=-1;
@@ -1490,7 +1516,6 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         for(int m=0;m<[columns count]; m++)
         {
             if ([[[columns objectAtIndex:m] lowercaseString] isEqualToString:[pk lowercaseString]]) {
-                
                 pk_index = m;
                 break;
             }
@@ -1772,7 +1797,8 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     }
     //sql = [NSString stringWithFormat:@"select UserId,UserName,Email from %@  ",tbName];
     query = sql;
-    // NSLog(@"sql info %@ >>>",query);
+    
+    //NSLog(@"sql info %@ >>>",[querys description]);
     
     if (dbPath == NULL) {
         return [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"You must specify database path"];

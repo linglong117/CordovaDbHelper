@@ -492,7 +492,11 @@ public class PGSQLitePlugin {
 				JSONArray selectData = new JSONArray();
 				JSONArray updateData = new JSONArray();
 				
-				selectData.put(dbName);
+				if ([pk length]==0) {
+                	NSLog(@"pk  or  pkValues is invalid.");
+           		}else
+	            {
+	            	selectData.put(dbName);
 				selectData.put(tableName);
 				selectData.put(new JSONArray().put(pk));
 				//selectData.put(pk+"=?");//where
@@ -585,10 +589,7 @@ public class PGSQLitePlugin {
 //							//Log.d("update  synctime result >>>>> ", m+ " >>  "+ result.getMessage());
 //						}
 //					}
-					//Log.d("查询记录是否存在>>>>>","dddddsssss");
-			
-				//Log.d("查询记录是否存在>>>>>","dddd");
-
+	            }				
 			}
 			
 			long id = 0;
