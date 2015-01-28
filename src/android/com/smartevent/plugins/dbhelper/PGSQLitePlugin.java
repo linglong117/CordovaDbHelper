@@ -486,15 +486,15 @@ public class PGSQLitePlugin {
 			if(data.length()==6)
 			{
 				int rowCount=-1;
-				pk = data.getString(4);
-				pkValues = data.getJSONArray(5);
-				//判断该条记录是否存在
-				JSONArray selectData = new JSONArray();
-				JSONArray updateData = new JSONArray();
 				
-				if (pk.length() == 0) {
-					Log.i("insertQuery >>>> ", "pk  or  pkValues is invalid.");
-				} else {
+				if(data.getString(4).length()>0 && data.getJSONArray(5) != null)
+				{
+					pk = data.getString(4);
+					pkValues = data.getJSONArray(5);
+					//判断该条记录是否存在
+					JSONArray selectData = new JSONArray();
+					JSONArray updateData = new JSONArray();
+					
 					selectData.put(dbName);
 					selectData.put(tableName);
 					selectData.put(new JSONArray().put(pk));
@@ -595,6 +595,15 @@ public class PGSQLitePlugin {
 					// result.getMessage());
 					// }
 					// }
+					
+//					if (pk.length() == 0) {
+//						Log.i("insertQuery >>>> ", "pk  or  pkValues is invalid.");
+//					} else {
+//						
+//					}
+				}else
+				{
+					Log.i("insertQuery >>>> ", "pk  or  pkValues is invalid.");
 				}
 			}
 
