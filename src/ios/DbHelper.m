@@ -1,3 +1,4 @@
+
 ////
 ////  SqlArg.h
 ////  Checkin
@@ -230,7 +231,7 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
 //========================================
 #pragma custom code
 
-- (void) copyDatabase:(id)dbPath{
+- (Boolean) copyDatabase:(id)dbPath{
     
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSError *error;
@@ -242,8 +243,13 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
         defaultDBPath = [defaultDBPath stringByAppendingPathComponent:_dbName];
         success = [fileManager copyItemAtPath:defaultDBPath toPath:dbPath error:&error];
         if (!success)
-            NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+        {
+            //NSAssert1(0, @"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+            //NSLog(@"Failed to create writable database file with message '%@'.", [error localizedDescription]);
+            return false;
+        }
     }
+    return success;
 }
 
 - (Boolean) reCopyDatabase:(id)dbPath{
@@ -821,7 +827,13 @@ static void sqlite_regexp(sqlite3_context* context, int argc, sqlite3_value** va
     _dbName = [options objectAtIndex:0];
     NSString *dbPath = [self databaseFullPath:_dbName];
     databasePath = [NSString stringWithFormat:@"%@",dbPath];
-    [self copyDatabase:dbPath];
+   
+    Boolean copyFlag =  [self copyDatabase:dbPath];
+    if (!copyFlag) {
+    	 pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"No such database, you must open it first..."];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
+    }
     
     seDbPath = [NSString stringWithFormat:@"%@",dbPath];
     /*
